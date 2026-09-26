@@ -2,25 +2,25 @@ import type { DeploymentRecommendation } from "@/mirrorcraft/deployment-classifi
 import { deriveHostingRuntime } from "@/mirrorcraft/hosting/runtime-bridge";
 import type { SourceRuntimeAnalysis } from "@/mirrorcraft/source-scanner";
 
-const STATIC_RECOMMENDATION: DeploymentRecommendation = {
+const STATIC_RECOMMENDATION = {
   profile: "static-export",
   compatibleTargets: ["github-pages"],
   incompatibleTargets: [],
   requirements: [],
   confidence: 0.98,
   reasons: ["static"],
-};
+} satisfies DeploymentRecommendation;
 
-const SERVER_RECOMMENDATION: DeploymentRecommendation = {
+const SERVER_RECOMMENDATION = {
   profile: "server-runtime",
   compatibleTargets: ["vercel"],
   incompatibleTargets: [],
   requirements: [],
   confidence: 0.98,
   reasons: ["server"],
-};
+} satisfies DeploymentRecommendation;
 
-const BASE_ANALYSIS: SourceRuntimeAnalysis = {
+const BASE_ANALYSIS = {
   routes: 1,
   dynamicRoutes: 0,
   apiRoutes: 0,
@@ -31,7 +31,7 @@ const BASE_ANALYSIS: SourceRuntimeAnalysis = {
   writableFilesystemRuntime: false,
   authRequiresServer: false,
   evidence: [],
-};
+} satisfies SourceRuntimeAnalysis;
 
 export const STATIC_RUNTIME = deriveHostingRuntime(
   STATIC_RECOMMENDATION,

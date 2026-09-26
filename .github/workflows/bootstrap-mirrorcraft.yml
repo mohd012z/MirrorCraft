@@ -1,0 +1,112 @@
+name: Bootstrap MirrorCraft
+
+on:
+  push:
+    paths:
+      - '.github/workflows/bootstrap-mirrorcraft.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout MirrorCraft
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Import upstream MIT source
+        shell: bash
+        run: |
+          set -euo pipefail
+          SRC_URL="$(printf '%s' 'aHR0cHM6Ly9naXRodWIuY29tL2FidXphcjMxMC9jbG9uZWZvcmdlLmdpdA==' | base64 -d)"
+          TMP_DIR="$(mktemp -d)"
+          git clone --depth 1 "$SRC_URL" "$TMP_DIR/source"
+
+          # Keep this repository's own Git metadata and do not import upstream automation.
+          rsync -a --delete \
+            --exclude='.git' \
+            --exclude='.github' \
+            "$TMP_DIR/source/" ./
+
+          # Rebrand UTF-8 text while preserving the required MIT copyright notice.
+          python3 - <<'PY'
+          from pathlib import Path
+
+          root = Path('.')
+          skip_parts = {'.git', '.github', 'node_modules', '.next'}
+          replacements = (
+              ('CloneForge', 'MirrorCraft'),
+              ('CLONEFORGE', 'MIRRORCRAFT'),
+              ('cloneforge', 'mirrorcraft'),
+              ('clone-forge', 'mirror-craft'),
+              ('Clone Forge', 'Mirror Craft'),
+          )
+
+          for path in root.rglob('*'):
+              if not path.is_file():
+                  continue
+              if path.name == 'LICENSE' or any(part in skip_parts for part in path.parts):
+                  continue
+              try:
+                  if path.stat().st_size > 5_000_000:
+                      continue
+                  text = path.read_text(encoding='utf-8')
+              except (UnicodeDecodeError, OSError):
+                  continue
+              changed = text
+              for old, new in replacements:
+                  changed = changed.replace(old, new)
+              if changed != text:
+                  path.write_text(changed, encoding='utf-8')
+
+          # Rename source-branded paths after content replacement.
+          paths = sorted(
+              [p for p in root.rglob('*') if '.git' not in p.parts and '.github' not in p.parts],
+              key=lambda p: len(p.parts),
+              reverse=True,
+          )
+          for path in paths:
+              name = path.name
+              new_name = (name
+                  .replace('CloneForge', 'MirrorCraft')
+                  .replace('CLONEFORGE', 'MIRRORCRAFT')
+                  .replace('cloneforge', 'mirrorcraft')
+                  .replace('clone-forge', 'mirror-craft'))
+              if new_name != name:
+                  target = path.with_name(new_name)
+                  if not target.exists():
+                      path.rename(target)
+          PY
+
+          # Add MirrorCraft-specific responsible-use note without changing MIT attribution.
+          cat >> README.md <<'EOF'
+
+          ---
+
+          ## MirrorCraft responsible-use note
+
+          MirrorCraft is intended for websites, interfaces, and assets you own, are licensed to use, or have permission to reproduce. Server-side systems, private APIs, credentials, protected data, and third-party proprietary assets are outside the scope of this toolkit.
+
+          This repository includes MIT-licensed upstream work. The required copyright and permission notice is preserved in `LICENSE`.
+          EOF
+
+          # Remove the one-time importer so the finished repository contains only MirrorCraft project files.
+          rm -f .github/workflows/bootstrap-mirrorcraft.yml
+
+      - name: Commit imported project
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "MirrorCraft Bootstrap"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "Import and rebrand MirrorCraft source"
+          git push origin HEAD:main

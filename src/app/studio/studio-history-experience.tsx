@@ -7,6 +7,8 @@ import { StudioHistoryTimeline } from "@/app/studio/studio-history-timeline";
 import { StudioHistoryToolbar } from "@/app/studio/studio-history-toolbar";
 import { useStudioHistoryKeyboard } from "@/app/studio/use-studio-history-keyboard";
 import {
+  canRedoStudioHistory,
+  canUndoStudioHistory,
   redoStudioHistory,
   undoStudioHistory,
   type StudioHistory,
@@ -54,7 +56,12 @@ export function StudioHistoryExperience({
     applyHistory(next);
   }
 
-  useStudioHistoryKeyboard({ onUndo: undo, onRedo: redo });
+  useStudioHistoryKeyboard({
+    onUndo: undo,
+    onRedo: redo,
+    canUndo: canUndoStudioHistory(history),
+    canRedo: canRedoStudioHistory(history),
+  });
 
   return (
     <div className="space-y-3">

@@ -1,15 +1,16 @@
 "use client";
 
+import type { StudioHistory } from "@/mirrorcraft/studio-history";
 import {
   getStudioTimeline,
-  type StudioHistory,
-} from "@/mirrorcraft/edit-history";
+  type StudioTimelineEntry,
+} from "@/mirrorcraft/studio-history/timeline";
 
-function operationSummary(history: StudioHistory, snapshotId: string): string {
-  const snapshot = getStudioTimeline(history).find((entry) => entry.id === snapshotId)?.snapshot;
-  if (!snapshot || snapshot.operations.length === 0) return "checkpoint";
+function operationSummary(history: StudioHistory, entry: StudioTimelineEntry): string {
+  const transition = history.entries.find((item) => item.id === entry.id);
+  if (!transition || transition.operations.length === 0) return "checkpoint";
 
-  const categories = [...new Set(snapshot.operations.map((operation) => operation.category))];
+  const categories = [...new Set(transition.operations.map((operation) => operation.category))];
   return categories.join(" · ");
 }
 
@@ -41,10 +42,9 @@ export function StudioHistoryTimeline({
       <div className="overflow-x-auto pb-1">
         <div className="flex min-w-max items-stretch gap-2">
           {timeline.map((entry, index) => {
-            const summary = operationSummary(history, entry.id);
-            const time = entry.createdAt.includes("T")
-              ? entry.createdAt.slice(11, 16)
-              : entry.createdAt;
+            const summary = operationSummary(history, entry);
+            const timestamp = entry.timestamp ?? "";
+            const time = timestamp.includes("T") ? timestamp.slice(11, 16) : timestamp;
 
             return (
               <button
@@ -62,7 +62,7 @@ export function StudioHistoryTimeline({
                   <span className={`text-[10px] font-semibold uppercase tracking-[0.14em] ${entry.active ? "text-cyan-200" : "text-white/30"}`}>
                     {entry.active ? "Current" : `#${index + 1}`}
                   </span>
-                  <span className="text-[10px] text-white/25">{time}</span>
+                  <span className="text-[10px] text-white/25">{time || "baseline"}</span>
                 </div>
 
                 <div className="mt-2 truncate text-sm font-semibold text-white/85" title={entry.label}>
@@ -73,7 +73,7 @@ export function StudioHistoryTimeline({
                 </div>
 
                 <div className="mt-3 flex items-center justify-between gap-2 text-[10px] text-white/30">
-                  <span>{entry.operationCount} ops</span>
+                  <span>{entry.operationsCount} ops</span>
                   <span>{entry.snapshot.composition.sections.length} sections</span>
                 </div>
 

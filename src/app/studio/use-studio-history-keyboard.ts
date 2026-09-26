@@ -11,12 +11,16 @@ export interface UseStudioHistoryKeyboardOptions {
   onUndo: () => void;
   onRedo: () => void;
   enabled?: boolean;
+  canUndo?: boolean;
+  canRedo?: boolean;
 }
 
 export function useStudioHistoryKeyboard({
   onUndo,
   onRedo,
   enabled = true,
+  canUndo = true,
+  canRedo = true,
 }: UseStudioHistoryKeyboardOptions): void {
   useEffect(() => {
     if (!enabled) return undefined;
@@ -32,6 +36,8 @@ export function useStudioHistoryKeyboard({
       });
 
       if (!action) return;
+      if (action === "undo" && !canUndo) return;
+      if (action === "redo" && !canRedo) return;
 
       event.preventDefault();
       if (action === "undo") {
@@ -43,5 +49,5 @@ export function useStudioHistoryKeyboard({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [enabled, onRedo, onUndo]);
+  }, [canRedo, canUndo, enabled, onRedo, onUndo]);
 }

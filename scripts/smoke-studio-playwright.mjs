@@ -52,7 +52,7 @@ try {
 
   assert.equal(await page.getByRole("heading", { name: "Editing Studio" }).isVisible(), true);
 
-  const composed = page.locator("section").filter({
+  const composed = page.locator("section.rounded-2xl").filter({
     has: page.getByText("Editable Composed Preview", { exact: true }),
   }).first();
   assert.equal(await composed.isVisible(), true);
@@ -64,6 +64,7 @@ try {
   const editedText = `Playwright Studio Edit ${process.pid}`;
   await editable.click();
   const directInput = composed.locator("input").last();
+  await directInput.waitFor({ state: "visible" });
   await directInput.fill(editedText);
   await composed.getByRole("button", { name: "Apply", exact: true }).click();
   assert.equal((await editable.textContent())?.trim(), editedText);
@@ -73,7 +74,7 @@ try {
   await undo.click();
   assert.equal((await editable.textContent())?.trim(), before);
 
-  const structuredOperations = page.locator("section").filter({
+  const structuredOperations = page.locator("section.rounded-2xl").filter({
     has: page.getByText("Structured Operations", { exact: true }),
   }).first();
   assert.equal(await structuredOperations.isVisible(), true);

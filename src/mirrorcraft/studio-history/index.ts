@@ -56,28 +56,51 @@ export interface StudioHistoryTransition {
   label: string;
   before: StudioSnapshot;
   after: StudioSnapshot;
-  operations: EditOperation[];
+  operations: readonly EditOperation[];
   timestamp: string;
 }
 
 export interface StudioHistory {
   present: StudioSnapshot;
-  past: StudioHistoryTransition[];
-  future: StudioHistoryTransition[];
+  past: readonly StudioHistoryTransition[];
+  future: readonly StudioHistoryTransition[];
+  entries: readonly StudioHistoryTransition[];
   limit: number;
+  sequence: number;
 }
 
 export interface RecordStudioSnapshotOptions {
   label: string;
-  operations?: EditOperation[];
+  operations?: readonly EditOperation[];
   timestamp?: string;
+}
+
+function cloneComposition(composition: PageComposition): PageComposition {
+  return {
+    ...composition,
+    sections: composition.sections.map((section) => ({ ...section })),
+  };
+}
+
+function cloneContent(content: SectionContentState): SectionContentState {
+  return {
+    ...content,
+    values: { ...content.values },
+  };
 }
 
 export function createStudioSnapshot(
   composition: PageComposition,
   content: SectionContentState,
 ): StudioSnapshot {
-  return { composition, content };
+  return {
+    composition: cloneComposition(composition),
+    content: cloneContent(content),
+  };
+}
+
+function cloneSnapshot(snapshot: StudioSnapshot): StudioSnapshot {
+  return createStudioSnapshot(snapshot.composition, snapshot.content);
 }
 
 export function createStudioHistory(
@@ -87,20 +110,31 @@ export function createStudioHistory(
   if (!Number.isFinite(limit) || limit < 1) {
     throw new Error("Studio history limit must be at least 1");
   }
+
   return {
-    present: initial,
+    present: cloneSnapshot(initial),
     past: [],
     future: [],
+    entries: [],
     limit: Math.floor(limit),
+    sequence: 0,
   };
 }
 
-function sameSnapshot(left: StudioSnapshot, right: StudioSnapshot): boolean {
-  return left.composition === right.composition && left.content === right.content;
+function hasDiff(diff: StudioDiffSummary): boolean {
+  return (
+    diff.sections.added.length > 0 ||
+    diff.sections.removed.length > 0 ||
+    diff.sections.moved.length > 0 ||
+    diff.sections.hiddenChanged.length > 0 ||
+    diff.sections.variantChanged.length > 0 ||
+    diff.content.added.length > 0 ||
+    diff.content.removed.length > 0 ||
+    diff.content.changed.length > 0
+  );
 }
 
-function transitionId(history: StudioHistory): string {
-  const sequence = history.past.length + history.future.length + 1;
+function transitionId(sequence: number): string {
   return `studio-change-${sequence}`;
 }
 
@@ -109,24 +143,30 @@ export function recordStudioSnapshot(
   next: StudioSnapshot,
   options: RecordStudioSnapshotOptions,
 ): StudioHistory {
-  if (sameSnapshot(history.present, next)) return history;
+  const nextSnapshot = cloneSnapshot(next);
+  const diff = summarizeStudioDiff(history.present, nextSnapshot);
+  if (!hasDiff(diff)) return history;
 
-  const operations = options.operations ?? deriveStudioEditOperations(history.present, next);
+  const sequence = history.sequence + 1;
+  const operations = options.operations ?? deriveStudioEditOperations(history.present, nextSnapshot);
   const transition: StudioHistoryTransition = {
-    id: transitionId(history),
+    id: transitionId(sequence),
     label: options.label,
-    before: history.present,
-    after: next,
+    before: cloneSnapshot(history.present),
+    after: nextSnapshot,
     operations,
     timestamp: options.timestamp ?? new Date().toISOString(),
   };
   const past = [...history.past, transition].slice(-history.limit);
+  const entries = [...history.past, transition].slice(-history.limit);
 
   return {
     ...history,
-    present: next,
+    present: nextSnapshot,
     past,
     future: [],
+    entries,
+    sequence,
   };
 }
 
@@ -144,9 +184,9 @@ export function undoStudioHistory(history: StudioHistory): StudioHistory {
 
   return {
     ...history,
-    present: transition.before,
+    present: cloneSnapshot(transition.before),
     past: history.past.slice(0, -1),
-    future: [transition, ...history.future],
+    future: [transition, ...history.future].slice(0, history.limit),
   };
 }
 
@@ -156,9 +196,32 @@ export function redoStudioHistory(history: StudioHistory): StudioHistory {
 
   return {
     ...history,
-    present: transition.after,
+    present: cloneSnapshot(transition.after),
     past: [...history.past, transition].slice(-history.limit),
     future: history.future.slice(1),
+  };
+}
+
+function relativeSharedPositions(
+  before: PageComposition,
+  after: PageComposition,
+): {
+  beforeIndex: Map<string, number>;
+  afterIndex: Map<string, number>;
+} {
+  const beforeIds = new Set(before.sections.map((section) => section.instanceId));
+  const afterIds = new Set(after.sections.map((section) => section.instanceId));
+  const shared = new Set([...beforeIds].filter((id) => afterIds.has(id)));
+  const beforeShared = before.sections
+    .map((section) => section.instanceId)
+    .filter((id) => shared.has(id));
+  const afterShared = after.sections
+    .map((section) => section.instanceId)
+    .filter((id) => shared.has(id));
+
+  return {
+    beforeIndex: new Map(beforeShared.map((id, index) => [id, index])),
+    afterIndex: new Map(afterShared.map((id, index) => [id, index])),
   };
 }
 
@@ -172,6 +235,7 @@ export function summarizeStudioDiff(
   const afterById = new Map(
     after.composition.sections.map((section, index) => [section.instanceId, { section, index }]),
   );
+  const relative = relativeSharedPositions(before.composition, after.composition);
 
   const added = after.composition.sections.filter((section) => !beforeById.has(section.instanceId));
   const removed = before.composition.sections.filter((section) => !afterById.has(section.instanceId));
@@ -182,7 +246,14 @@ export function summarizeStudioDiff(
   for (const [instanceId, beforeItem] of beforeById) {
     const afterItem = afterById.get(instanceId);
     if (!afterItem) continue;
-    if (beforeItem.index !== afterItem.index) {
+
+    const beforeRelativeIndex = relative.beforeIndex.get(instanceId);
+    const afterRelativeIndex = relative.afterIndex.get(instanceId);
+    if (
+      beforeRelativeIndex !== undefined &&
+      afterRelativeIndex !== undefined &&
+      beforeRelativeIndex !== afterRelativeIndex
+    ) {
       moved.push({ instanceId, from: beforeItem.index, to: afterItem.index });
     }
     if (beforeItem.section.hidden !== afterItem.section.hidden) {
@@ -244,6 +315,10 @@ function operationId(index: number, nodeId: string): string {
 
 function isMediaNode(nodeId: string): boolean {
   return /:slot:(media|dashboardPreview|avatar)$/.test(nodeId);
+}
+
+function parentSectionId(nodeId: string): string {
+  return nodeId.split(":slot:")[0];
 }
 
 export function deriveStudioEditOperations(
@@ -344,22 +419,55 @@ export function deriveStudioEditOperations(
     });
   }
 
-  for (const item of diff.content.changed) {
-    const instanceId = item.nodeId.split(":slot:")[0];
+  const contentChanges: Array<{
+    item: ContentValueDiff;
+    changeKind: "added" | "removed" | "changed";
+  }> = [
+    ...diff.content.added.map((item) => ({ item, changeKind: "added" as const })),
+    ...diff.content.removed.map((item) => ({ item, changeKind: "removed" as const })),
+    ...diff.content.changed.map((item) => ({ item, changeKind: "changed" as const })),
+  ];
+
+  for (const { item, changeKind } of contentChanges) {
+    const instanceId = parentSectionId(item.nodeId);
     if (addedIds.has(instanceId) || removedIds.has(instanceId)) continue;
+
     const media = isMediaNode(item.nodeId);
     addOperation({
       category: media ? "asset" : "content",
       parameterId: media ? "asset.image" : "content.text",
       target: { nodeId: item.nodeId, kind: "content" },
-      before: item.before ?? "",
-      after: item.after ?? "",
+      before: item.before ?? null,
+      after: item.after ?? null,
       viewport: allViewport(),
       reversible: true,
-      reason: media ? "Section media changed by direct edit" : "Section content changed by direct edit",
+      reason:
+        changeKind === "added"
+          ? "Section slot added by template change"
+          : changeKind === "removed"
+            ? "Section slot removed by template change"
+            : media
+              ? "Section media changed by direct edit"
+              : "Section content changed by direct edit",
       verification: { level: "visual", required: true },
+      metadata: { changeKind },
     });
   }
 
   return operations;
 }
+
+export function commitStudioTransaction(
+  history: StudioHistory,
+  snapshot: StudioSnapshot,
+  operation: EditOperation,
+  label: string,
+): StudioHistory {
+  return recordStudioSnapshot(history, snapshot, {
+    label,
+    operations: [operation],
+  });
+}
+
+export const undoStudioTransaction = undoStudioHistory;
+export const redoStudioTransaction = redoStudioHistory;

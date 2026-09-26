@@ -4,7 +4,7 @@ import {
   canRedoStudioHistory,
   canUndoStudioHistory,
   type StudioHistory,
-} from "@/mirrorcraft/studio-history";
+} from "@/mirrorcraft/edit-history";
 
 export function StudioHistoryToolbar({
   history,
@@ -17,8 +17,7 @@ export function StudioHistoryToolbar({
 }) {
   const canUndo = canUndoStudioHistory(history);
   const canRedo = canRedoStudioHistory(history);
-  const activeTransition = history.past.at(-1);
-  const activeOperations = activeTransition?.operations ?? [];
+  const activeOperations = history.present.operations;
   const contentCount = activeOperations.filter((operation) => operation.category === "content").length;
   const assetCount = activeOperations.filter((operation) => operation.category === "asset").length;
   const structureCount = activeOperations.filter(
@@ -44,8 +43,8 @@ export function StudioHistoryToolbar({
       >
         ↷ Redo
       </button>
-      <span className="min-w-0 flex-1 truncate text-white/45" title={activeTransition?.label ?? "Baseline"}>
-        {activeTransition?.label ?? "Baseline"}
+      <span className="min-w-0 flex-1 truncate text-white/45" title={history.present.label}>
+        {history.present.label}
       </span>
       {activeOperations.length > 0 ? (
         <div className="flex flex-wrap gap-1 text-[10px] text-white/45">

@@ -11,6 +11,7 @@ import {
   redoStudioHistory as redoCoreHistory,
   summarizeStudioDiff as summarizeCoreDiff,
   undoStudioHistory as undoCoreHistory,
+  type ContentValueDiff,
   type StudioHistory as CoreStudioHistory,
   type StudioSnapshot as CoreStudioSnapshot,
 } from "@/mirrorcraft/studio-history";
@@ -70,9 +71,9 @@ export interface StudioSnapshotDiff {
     reordered: readonly string[];
   };
   content: {
-    added: readonly string[];
-    removed: readonly string[];
-    changed: readonly string[];
+    added: readonly ContentValueDiff[];
+    removed: readonly ContentValueDiff[];
+    changed: readonly ContentValueDiff[];
   };
   changedSections: readonly string[];
   changedContent: readonly string[];
@@ -125,14 +126,45 @@ export function createStudioSnapshot(
 }
 
 export function createStudioHistory(
+  initial: StudioSnapshot,
+  limit?: number,
+): StudioHistory;
+export function createStudioHistory(
   composition: PageComposition,
   content: SectionContentState,
-  options: CreateStudioHistoryOptions = {},
+  options?: CreateStudioHistoryOptions,
+): StudioHistory;
+export function createStudioHistory(
+  first: StudioSnapshot | PageComposition,
+  second?: number | SectionContentState,
+  third: CreateStudioHistoryOptions = {},
 ): StudioHistory {
-  const maxEntries = Math.max(1, Math.floor(options.maxEntries ?? 100));
+  if ("composition" in first && "content" in first) {
+    const maxEntries = Math.max(1, Math.floor(typeof second === "number" ? second : 100));
+    const present: StudioSnapshot = {
+      ...first,
+      operations: [...first.operations],
+    };
+    return {
+      present,
+      past: [],
+      future: [],
+      maxEntries,
+      sequence: 0,
+      core: createCoreHistory(toCoreSnapshot(present), maxEntries),
+    };
+  }
+
+  if (!second || typeof second === "number") {
+    throw new Error("Section content state is required when creating history from a composition");
+  }
+
+  const composition = first;
+  const content = second;
+  const maxEntries = Math.max(1, Math.floor(third.maxEntries ?? 100));
   const present = legacySnapshot(composition, content, 0, {
-    label: options.label ?? "Initial state",
-    createdAt: options.createdAt,
+    label: third.label ?? "Initial state",
+    createdAt: third.createdAt,
   });
   return {
     present,
@@ -160,15 +192,20 @@ export function buildStudioSnapshotDiff(
     ...diff.sections.variantChanged.map((item) => item.instanceId),
   ].filter((id, index, values) => values.indexOf(id) === index);
   const reordered = diff.sections.moved.map((item) => item.instanceId);
-  const contentAdded = diff.content.added.map((item) => item.nodeId);
-  const contentRemoved = diff.content.removed.map((item) => item.nodeId);
-  const contentChanged = diff.content.changed.map((item) => item.nodeId);
+  const contentAdded = diff.content.added;
+  const contentRemoved = diff.content.removed;
+  const contentChanged = diff.content.changed;
+  const changedContent = [
+    ...contentAdded.map((item) => item.nodeId),
+    ...contentRemoved.map((item) => item.nodeId),
+    ...contentChanged.map((item) => item.nodeId),
+  ];
 
   return {
     sections: { added, removed, changed, reordered },
     content: { added: contentAdded, removed: contentRemoved, changed: contentChanged },
     changedSections: [...new Set([...added, ...removed, ...changed, ...reordered])],
-    changedContent: [...new Set([...contentAdded, ...contentRemoved, ...contentChanged])],
+    changedContent: [...new Set(changedContent)],
   };
 }
 

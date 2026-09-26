@@ -20,11 +20,12 @@ export function StudioHistoryInspector({
   onRestore,
 }: {
   history: StudioHistory;
-  transitionId: string | null;
-  onRestore: (history: StudioHistory) => void;
+  transitionId?: string | null;
+  onRestore?: (history: StudioHistory) => void;
 }) {
-  const transition = transitionId
-    ? history.entries.find((entry) => entry.id === transitionId)
+  const selectedTransitionId = transitionId ?? history.past.at(-1)?.id ?? null;
+  const transition = selectedTransitionId
+    ? history.entries.find((entry) => entry.id === selectedTransitionId)
     : undefined;
 
   if (!transition) {
@@ -42,6 +43,7 @@ export function StudioHistoryInspector({
   }
 
   const inspection = buildStudioTransitionInspection(transition);
+  const canRestore = inspection.reversible && Boolean(onRestore);
 
   return (
     <section className="rounded-xl border border-white/10 bg-white/[0.025] p-4 text-white">
@@ -53,20 +55,22 @@ export function StudioHistoryInspector({
           <h3 className="mt-1 text-sm font-semibold text-white/85">{inspection.label}</h3>
           <div className="mt-1 text-[11px] text-white/30">{inspection.timestamp}</div>
         </div>
-        <button
-          type="button"
-          disabled={!inspection.reversible}
-          onClick={() =>
-            onRestore(
-              restoreStudioCheckpoint(history, transition.id, {
-                label: `Restore ${transition.label}`,
-              }),
-            )
-          }
-          className="rounded-lg border border-violet-300/20 bg-violet-300/10 px-3 py-2 text-xs font-semibold text-violet-100 transition hover:bg-violet-300/15 disabled:cursor-not-allowed disabled:opacity-35"
-        >
-          Restore as new edit
-        </button>
+        {onRestore ? (
+          <button
+            type="button"
+            disabled={!canRestore}
+            onClick={() =>
+              onRestore(
+                restoreStudioCheckpoint(history, transition.id, {
+                  label: `Restore ${transition.label}`,
+                }),
+              )
+            }
+            className="rounded-lg border border-violet-300/20 bg-violet-300/10 px-3 py-2 text-xs font-semibold text-violet-100 transition hover:bg-violet-300/15 disabled:cursor-not-allowed disabled:opacity-35"
+          >
+            Restore as new edit
+          </button>
+        ) : null}
       </div>
 
       <div className="mt-4 grid gap-2 sm:grid-cols-4">
@@ -74,7 +78,11 @@ export function StudioHistoryInspector({
         <Metric label="Affected nodes" value={inspection.affectedNodeIds.length} />
         <Metric
           label="Content changes"
-          value={inspection.diff.content.changed.length}
+          value={
+            inspection.diff.content.added.length +
+            inspection.diff.content.removed.length +
+            inspection.diff.content.changed.length
+          }
         />
         <Metric
           label="Reversible"

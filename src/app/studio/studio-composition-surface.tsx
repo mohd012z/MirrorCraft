@@ -6,11 +6,12 @@ import { EditableComposedPagePreview } from "@/app/studio/editable-composed-prev
 import { SectionComposerPanel } from "@/app/studio/section-composer-panel";
 import { StudioHistoryToolbar } from "@/app/studio/studio-history-toolbar";
 import {
-  commitStudioSnapshot,
   createStudioHistory,
+  createStudioSnapshot,
+  recordStudioSnapshot,
   redoStudioHistory,
   undoStudioHistory,
-} from "@/mirrorcraft/edit-history";
+} from "@/mirrorcraft/studio-history";
 import {
   createSectionContentState,
   reconcileSectionContentState,
@@ -36,10 +37,10 @@ const INITIAL_CONTENT = createSectionContentState(INITIAL_COMPOSITION);
 
 export function StudioCompositionSurface() {
   const [history, setHistory] = useState(() =>
-    createStudioHistory(INITIAL_COMPOSITION, INITIAL_CONTENT, {
-      maxEntries: 100,
-      label: "Initial studio state",
-    }),
+    createStudioHistory(
+      createStudioSnapshot(INITIAL_COMPOSITION, INITIAL_CONTENT),
+      100,
+    ),
   );
 
   const composition = history.present.composition;
@@ -53,21 +54,21 @@ export function StudioCompositionSurface() {
   function changeComposition(next: PageComposition) {
     setHistory((current) => {
       const nextContent = reconcileSectionContentState(current.present.content, next);
-      return commitStudioSnapshot(current, {
-        composition: next,
-        content: nextContent,
-        label: "Update page structure",
-      });
+      return recordStudioSnapshot(
+        current,
+        createStudioSnapshot(next, nextContent),
+        { label: "Update page structure" },
+      );
     });
   }
 
   function changeContent(next: SectionContentState) {
     setHistory((current) =>
-      commitStudioSnapshot(current, {
-        composition: current.present.composition,
-        content: next,
-        label: "Edit section content",
-      }),
+      recordStudioSnapshot(
+        current,
+        createStudioSnapshot(current.present.composition, next),
+        { label: "Edit section content" },
+      ),
     );
   }
 
@@ -86,6 +87,7 @@ export function StudioCompositionSurface() {
           <span>content rev {content.revision}</span>
           <span className="rounded-md border border-white/10 px-2 py-1">WebMap {Object.keys(graph.nodes).length} nodes</span>
           <span className="rounded-md border border-white/10 px-2 py-1">{graph.edges.length} edges</span>
+          <span className="rounded-md border border-white/10 px-2 py-1">{history.entries.length} history entries</span>
         </div>
       </div>
 

@@ -1,6 +1,5 @@
 import type { SecretRef } from "@/mirrorcraft/integrations/secrets";
 import type {
-  IntegrationCapability,
   IntegrationProviderDescriptor,
   IntegrationRuntime,
 } from "@/mirrorcraft/integrations/types";

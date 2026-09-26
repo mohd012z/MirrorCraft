@@ -1,9 +1,12 @@
 import {
-  commitStudioSnapshot,
   createStudioHistory,
+  createStudioSnapshot,
+  recordStudioSnapshot,
+} from "@/mirrorcraft/studio-history";
+import {
   getStudioTimeline,
   jumpToStudioSnapshot,
-} from "@/mirrorcraft/edit-history";
+} from "@/mirrorcraft/studio-history/timeline";
 import {
   createSectionContentState,
   setSectionSlotValue,
@@ -14,35 +17,32 @@ const composition = createPageComposition("timeline", ["hero-centered"]);
 const content = createSectionContentState(composition);
 const heroId = composition.sections[0].instanceId;
 
-let history = createStudioHistory(composition, content, {
-  createdAt: "2026-09-26T00:00:00.000Z",
-});
+let history = createStudioHistory(createStudioSnapshot(composition, content));
 
 const firstContent = setSectionSlotValue(content, heroId, "heading", "First edit");
-history = commitStudioSnapshot(history, {
-  composition,
-  content: firstContent,
-  label: "First edit",
-  createdAt: "2026-09-26T00:01:00.000Z",
-});
-const firstId = history.present.id;
+history = recordStudioSnapshot(
+  history,
+  createStudioSnapshot(composition, firstContent),
+  { label: "First edit", timestamp: "2026-09-26T00:01:00.000Z" },
+);
+const firstId = history.past.at(-1)?.id;
+if (!firstId) throw new Error("Expected first history transition id");
 
 const secondContent = setSectionSlotValue(firstContent, heroId, "heading", "Second edit");
-history = commitStudioSnapshot(history, {
-  composition,
-  content: secondContent,
-  label: "Second edit",
-  createdAt: "2026-09-26T00:02:00.000Z",
-});
+history = recordStudioSnapshot(
+  history,
+  createStudioSnapshot(composition, secondContent),
+  { label: "Second edit", timestamp: "2026-09-26T00:02:00.000Z" },
+);
 
 const timeline = getStudioTimeline(history);
 if (timeline.length !== 3 || !timeline.at(-1)?.active) {
-  throw new Error("Expected three timeline entries with the newest active");
+  throw new Error("Expected initial state plus two edits with the newest active");
 }
 
 const jumped = jumpToStudioSnapshot(history, firstId);
-if (jumped.present.id !== firstId) {
-  throw new Error("Expected jump to activate the requested snapshot");
+if (jumped.past.at(-1)?.id !== firstId) {
+  throw new Error("Expected jump to activate the requested transition snapshot");
 }
 if (jumped.past.length !== 1 || jumped.future.length !== 1) {
   throw new Error("Expected jump to repartition history around the target snapshot");

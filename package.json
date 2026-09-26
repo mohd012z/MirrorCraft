@@ -2,29 +2,29 @@
   "name": "mirrorcraft",
   "version": "1.0.0",
   "private": true,
-  "description": "Forge any website into a clean Next.js app with Cursor, Claude Code, and other AI coding agents",
-  "author": "abuzar310",
+  "description": "Reconstruct permitted websites into clean, editable Next.js apps with AI-assisted browser analysis",
+  "author": "mohd012z",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/abuzar310/mirrorcraft.git"
+    "url": "https://github.com/mohd012z/MirrorCraft.git"
   },
-  "homepage": "https://github.com/abuzar310/mirrorcraft",
+  "homepage": "https://github.com/mohd012z/MirrorCraft",
   "bugs": {
-    "url": "https://github.com/abuzar310/mirrorcraft/issues"
+    "url": "https://github.com/mohd012z/MirrorCraft/issues"
   },
   "keywords": [
     "mirrorcraft",
+    "website-reconstruction",
+    "visual-analysis",
     "cursor",
     "claude-code",
-    "website-clone",
-    "reverse-engineering",
     "nextjs",
     "ai",
     "template",
     "tailwindcss",
     "shadcn-ui",
-    "pixel-perfect"
+    "pixel-comparison"
   ],
   "engines": {
     "node": ">=20"

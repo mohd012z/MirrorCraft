@@ -4,7 +4,7 @@ import {
   canRedoStudioHistory,
   canUndoStudioHistory,
   type StudioHistory,
-} from "@/mirrorcraft/edit-history";
+} from "@/mirrorcraft/studio-history";
 
 export function StudioHistoryToolbar({
   history,
@@ -17,6 +17,13 @@ export function StudioHistoryToolbar({
 }) {
   const canUndo = canUndoStudioHistory(history);
   const canRedo = canRedoStudioHistory(history);
+  const activeTransition = history.past.at(-1);
+  const activeOperations = activeTransition?.operations ?? [];
+  const contentCount = activeOperations.filter((operation) => operation.category === "content").length;
+  const assetCount = activeOperations.filter((operation) => operation.category === "asset").length;
+  const structureCount = activeOperations.filter(
+    (operation) => operation.category === "restructure" || operation.category === "template",
+  ).length;
 
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-white/[0.025] px-3 py-2 text-xs text-white/55">
@@ -37,9 +44,16 @@ export function StudioHistoryToolbar({
       >
         ↷ Redo
       </button>
-      <span className="min-w-0 flex-1 truncate text-white/45" title={history.present.label}>
-        {history.present.label}
+      <span className="min-w-0 flex-1 truncate text-white/45" title={activeTransition?.label ?? "Baseline"}>
+        {activeTransition?.label ?? "Baseline"}
       </span>
+      {activeOperations.length > 0 ? (
+        <div className="flex flex-wrap gap-1 text-[10px] text-white/45">
+          {contentCount > 0 ? <span className="rounded border border-white/10 px-1.5 py-0.5">{contentCount} content</span> : null}
+          {assetCount > 0 ? <span className="rounded border border-white/10 px-1.5 py-0.5">{assetCount} asset</span> : null}
+          {structureCount > 0 ? <span className="rounded border border-white/10 px-1.5 py-0.5">{structureCount} structure</span> : null}
+        </div>
+      ) : null}
       <span className="rounded-md border border-white/10 px-2 py-1 text-white/35">
         {history.past.length} back · {history.future.length} forward
       </span>

@@ -48,6 +48,9 @@ jobs:
       - name: Provider adapter smoke
         run: npm run smoke:providers
 
+      - name: Runtime classifier smoke
+        run: npm run smoke:runtime
+
       - name: Domain planner smoke
         run: npm run smoke:domain
 

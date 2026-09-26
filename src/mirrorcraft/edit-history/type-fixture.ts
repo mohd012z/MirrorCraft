@@ -1,8 +1,9 @@
 import {
-  commitStudioSnapshot,
   createStudioHistory,
+  createStudioSnapshot,
+  recordStudioSnapshot,
   redoStudioHistory,
-  summarizeStudioTransition,
+  summarizeStudioDiff,
   undoStudioHistory,
 } from "@/mirrorcraft/edit-history";
 import {
@@ -16,11 +17,8 @@ import {
 
 const initialComposition = createPageComposition("home", ["hero-centered"]);
 const initialContent = createSectionContentState(initialComposition);
-
-const history = createStudioHistory(initialComposition, initialContent, {
-  maxEntries: 50,
-  label: "Initial state",
-});
+const initialSnapshot = createStudioSnapshot(initialComposition, initialContent);
+const history = createStudioHistory(initialSnapshot, 50);
 
 const changedComposition = addSection(initialComposition, "cta-banner");
 const changedContent = setSectionSlotValue(
@@ -29,23 +27,21 @@ const changedContent = setSectionSlotValue(
   "heading",
   "Edited heading",
 );
+const changedSnapshot = createStudioSnapshot(changedComposition, changedContent);
 
-const committed = commitStudioSnapshot(history, {
-  composition: changedComposition,
-  content: changedContent,
+const committed = recordStudioSnapshot(history, changedSnapshot, {
   label: "Edit hero and add CTA",
 });
-
 const undone = undoStudioHistory(committed);
 const redone = redoStudioHistory(undone);
-const summary = summarizeStudioTransition(history.present, committed.present);
+const summary = summarizeStudioDiff(history.present, committed.present);
 
-const undoLabel: string = undone.present.label;
-const redoLabel: string = redone.present.label;
-const sectionDelta: number = summary.sectionDelta;
-const changedNodes: readonly string[] = summary.changedContentNodeIds;
+const undoCount: number = undone.future.length;
+const redoCount: number = redone.past.length;
+const sectionDelta: number = summary.sections.added.length - summary.sections.removed.length;
+const changedNodes: readonly string[] = summary.content.changed.map((item) => item.nodeId);
 
-void undoLabel;
-void redoLabel;
+void undoCount;
+void redoCount;
 void sectionDelta;
 void changedNodes;

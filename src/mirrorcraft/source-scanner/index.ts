@@ -34,7 +34,10 @@ const DATABASE_PATTERNS: RegExp[] = [
 ];
 
 const SERVER_AUTH_PATTERNS: RegExp[] = [
-  /\b(getServerSession|auth\s*\(|cookies\s*\(|headers\s*\()\b/,
+  /\bgetServerSession\b/,
+  /\bauth\s*\(/,
+  /\bcookies\s*\(/,
+  /\bheaders\s*\(/,
   /next-auth|@auth\//i,
   /createServerClient\s*\(/,
 ];
@@ -70,12 +73,12 @@ function addEvidence(
 }
 
 function isPageRoute(path: string): boolean {
-  return /(?:^|\/)app\/(?!api\/).+\/(?:page|route)\.(?:ts|tsx|js|jsx)$/.test(path) ||
-    /(?:^|\/)pages\/(?!api\/).+\.(?:ts|tsx|js|jsx)$/.test(path);
+  return /(?:^|\/)app\/(?!api\/)(?:.+\/)?page\.(?:ts|tsx|js|jsx)$/.test(path) ||
+    /(?:^|\/)pages\/(?!api\/)(?:.+\/)?(?:index|[^/]+)\.(?:ts|tsx|js|jsx)$/.test(path);
 }
 
 function isApiRoute(path: string): boolean {
-  return /(?:^|\/)app\/api\/.+\/route\.(?:ts|js)$/.test(path) ||
+  return /(?:^|\/)app\/api\/(?:.+\/)?route\.(?:ts|js)$/.test(path) ||
     /(?:^|\/)pages\/api\/.+\.(?:ts|js)$/.test(path);
 }
 
@@ -160,7 +163,7 @@ export function scanSourceRuntime(files: SourceFileInput[]): SourceRuntimeAnalys
       }
     }
 
-    if (/\bImageResponse\b|opengraph-image\.(?:ts|tsx|js|jsx)$/.test(file.content) || /opengraph-image\.(?:ts|tsx|js|jsx)$/.test(file.path)) {
+    if (/\bImageResponse\b/.test(file.content) || /opengraph-image\.(?:ts|tsx|js|jsx)$/.test(file.path)) {
       unsupportedStaticFeatures.add("runtime-generated image response");
       evidence.push({
         kind: "static-limitation",

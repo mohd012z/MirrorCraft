@@ -1,1 +1,3 @@
-// RED contract placeholder intentionally omitted in this commit.
+import assert from "node:assert/strict";
+
+assert.fail("lifecycle smoke not implemented");

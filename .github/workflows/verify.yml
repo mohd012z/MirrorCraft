@@ -51,5 +51,8 @@ jobs:
       - name: Domain planner smoke
         run: npm run smoke:domain
 
+      - name: Lifecycle smoke
+        run: npm run smoke:lifecycle
+
       - name: Build
         run: npm run build

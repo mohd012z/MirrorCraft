@@ -76,8 +76,13 @@ export function useStudioRecovery({
   const historyRef = useRef(history);
   const onHistoryChangeRef = useRef(onHistoryChange);
 
-  historyRef.current = history;
-  onHistoryChangeRef.current = onHistoryChange;
+  useEffect(() => {
+    historyRef.current = history;
+  }, [history]);
+
+  useEffect(() => {
+    onHistoryChangeRef.current = onHistoryChange;
+  }, [onHistoryChange]);
 
   useEffect(() => {
     setStatus("checking");

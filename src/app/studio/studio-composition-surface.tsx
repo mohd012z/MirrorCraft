@@ -1,24 +1,15 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { EditableComposedPagePreview } from "@/app/studio/editable-composed-preview";
 import { SectionComposerPanel } from "@/app/studio/section-composer-panel";
-import { StudioHistoryInspector } from "@/app/studio/studio-history-inspector";
-import { StudioHistoryTimeline } from "@/app/studio/studio-history-timeline";
-import { StudioHistoryToolbar } from "@/app/studio/studio-history-toolbar";
-import { useStudioHistoryKeyboard } from "@/app/studio/use-studio-history-keyboard";
+import { StudioHistoryExperience } from "@/app/studio/studio-history-experience";
 import {
   createStudioHistory,
   createStudioSnapshot,
   recordStudioSnapshot,
-  redoStudioHistory,
-  undoStudioHistory,
 } from "@/mirrorcraft/studio-history";
-import {
-  restoreStudioCheckpoint,
-} from "@/mirrorcraft/studio-history/restore";
-import { jumpToStudioSnapshot } from "@/mirrorcraft/studio-history/timeline";
 import {
   createSectionContentState,
   reconcileSectionContentState,
@@ -58,16 +49,6 @@ export function StudioCompositionSurface() {
     [composition, content],
   );
 
-  const undo = useCallback(() => {
-    setHistory((current) => undoStudioHistory(current));
-  }, []);
-
-  const redo = useCallback(() => {
-    setHistory((current) => redoStudioHistory(current));
-  }, []);
-
-  useStudioHistoryKeyboard({ onUndo: undo, onRedo: redo });
-
   function changeComposition(next: PageComposition) {
     setHistory((current) => {
       const nextContent = reconcileSectionContentState(current.present.content, next);
@@ -89,34 +70,9 @@ export function StudioCompositionSurface() {
     );
   }
 
-  function restoreCheckpoint(checkpointId: string) {
-    setHistory((current) =>
-      restoreStudioCheckpoint(current, checkpointId, {
-        label: "Restore history checkpoint",
-      }),
-    );
-  }
-
   return (
     <div className="space-y-5">
-      <StudioHistoryToolbar
-        history={history}
-        onUndo={undo}
-        onRedo={redo}
-      />
-
-      <StudioHistoryTimeline
-        history={history}
-        onJump={(transitionId) =>
-          setHistory((current) => jumpToStudioSnapshot(current, transitionId))
-        }
-        onRestore={restoreCheckpoint}
-      />
-
-      <StudioHistoryInspector
-        history={history}
-        onRestore={(nextHistory) => setHistory(nextHistory)}
-      />
+      <StudioHistoryExperience history={history} onHistoryChange={setHistory} />
 
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.025] px-3 py-2 text-xs text-white/50">
         <span>Shared page model</span>

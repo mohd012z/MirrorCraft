@@ -5,9 +5,10 @@ import {
   redoStudioHistory,
   summarizeStudioDiff,
   undoStudioHistory,
-} from "@/mirrorcraft/edit-history";
+} from "@/mirrorcraft/studio-history";
 import {
   createSectionContentState,
+  reconcileSectionContentState,
   setSectionSlotValue,
 } from "@/mirrorcraft/section-content";
 import {
@@ -21,12 +22,13 @@ const initialSnapshot = createStudioSnapshot(initialComposition, initialContent)
 const history = createStudioHistory(initialSnapshot, 50);
 
 const changedComposition = addSection(initialComposition, "cta-banner");
-const changedContent = setSectionSlotValue(
+const editedContent = setSectionSlotValue(
   initialContent,
   initialComposition.sections[0].instanceId,
   "heading",
   "Edited heading",
 );
+const changedContent = reconcileSectionContentState(editedContent, changedComposition);
 const changedSnapshot = createStudioSnapshot(changedComposition, changedContent);
 
 const committed = recordStudioSnapshot(history, changedSnapshot, {

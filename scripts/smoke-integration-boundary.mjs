@@ -39,6 +39,9 @@ const secrets = await loadTypeScriptModule(
 const registryModule = await loadTypeScriptModule(
   "../src/mirrorcraft/integrations/registry.ts",
 );
+const googleModule = await loadTypeScriptModule(
+  "../src/mirrorcraft/integrations/providers/google.ts",
+);
 
 const sensitiveText = [
   "Authorization: Bearer abc.def.ghi-super-secret",
@@ -116,6 +119,54 @@ assert.throws(
       quota: { freeTier: "unknown", confidence: 0 },
     }),
   /already registered/,
+);
+
+assert.equal(googleModule.GOOGLE_PROVIDER_DESCRIPTOR.id, "google");
+assert.equal(googleModule.GOOGLE_PROVIDER_DESCRIPTOR.quota.freeTier, "unknown");
+assert.ok(
+  googleModule.GOOGLE_PROVIDER_DESCRIPTOR.quota.source.includes(
+    "cloud.google.com/run/pricing",
+  ),
+);
+assert.ok(
+  googleModule.GOOGLE_SERVICE_CATALOG.some(
+    (service) => service.id === "firebase-hosting",
+  ),
+);
+assert.ok(
+  googleModule.GOOGLE_SERVICE_CATALOG.some(
+    (service) => service.id === "cloud-run",
+  ),
+);
+
+const googlePlan = googleModule.createGoogleIntegrationPlan({
+  connectionId: "primary",
+  services: ["google-oauth", "firebase-hosting", "google-oauth"],
+  secretRefs: [secretRef],
+  requestedScopes: ["openid", "email", "email"],
+});
+assert.deepEqual(googlePlan.services, ["google-oauth", "firebase-hosting"]);
+assert.deepEqual(googlePlan.requestedScopes, ["openid", "email"]);
+assert.equal(googlePlan.requiresSecretResolver, true);
+assert.equal(googlePlan.providerId, "google");
+assert.ok(!JSON.stringify(googlePlan).includes("oauth-client-secret-value"));
+
+assert.throws(
+  () =>
+    googleModule.createGoogleIntegrationPlan({
+      connectionId: "bad-provider",
+      services: ["google-oauth"],
+      secretRefs: [
+        {
+          scheme: "secret",
+          provider: "github",
+          connectionId: "primary",
+          secretId: "token",
+        },
+      ],
+      requestedScopes: [],
+    }),
+  /must use google secret references/,
 );
 
 console.log("MirrorCraft integration boundary smoke passed");

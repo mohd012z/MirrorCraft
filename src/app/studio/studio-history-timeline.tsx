@@ -17,9 +17,11 @@ function operationSummary(history: StudioHistory, entry: StudioTimelineEntry): s
 export function StudioHistoryTimeline({
   history,
   onJump,
+  onRestore,
 }: {
   history: StudioHistory;
   onJump: (snapshotId: string) => void;
+  onRestore?: (snapshotId: string) => void;
 }) {
   const timeline = getStudioTimeline(history);
 
@@ -31,7 +33,7 @@ export function StudioHistoryTimeline({
             History Timeline
           </div>
           <div className="mt-1 text-xs text-white/40">
-            Jump to any checkpoint without replaying every intermediate edit.
+            Jump for inspection, or restore a checkpoint as a new auditable edit.
           </div>
         </div>
         <div className="rounded-md border border-white/10 px-2 py-1 text-[10px] text-white/40">
@@ -47,35 +49,49 @@ export function StudioHistoryTimeline({
             const time = timestamp.includes("T") ? timestamp.slice(11, 16) : timestamp;
 
             return (
-              <button
+              <div
                 key={entry.id}
-                type="button"
-                onClick={() => onJump(entry.id)}
                 aria-current={entry.active ? "step" : undefined}
-                className={`group relative w-48 rounded-xl border p-3 text-left transition ${
+                className={`group relative flex w-48 flex-col rounded-xl border transition ${
                   entry.active
                     ? "border-cyan-300/50 bg-cyan-300/10 shadow-[0_0_0_1px_rgba(103,232,249,0.08)]"
                     : "border-white/10 bg-black/10 hover:border-white/20 hover:bg-white/[0.04]"
                 }`}
               >
-                <div className="flex items-center justify-between gap-2">
-                  <span className={`text-[10px] font-semibold uppercase tracking-[0.14em] ${entry.active ? "text-cyan-200" : "text-white/30"}`}>
-                    {entry.active ? "Current" : `#${index + 1}`}
-                  </span>
-                  <span className="text-[10px] text-white/25">{time || "baseline"}</span>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => onJump(entry.id)}
+                  className="flex-1 p-3 text-left"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={`text-[10px] font-semibold uppercase tracking-[0.14em] ${entry.active ? "text-cyan-200" : "text-white/30"}`}>
+                      {entry.active ? "Current" : `#${index + 1}`}
+                    </span>
+                    <span className="text-[10px] text-white/25">{time || "baseline"}</span>
+                  </div>
 
-                <div className="mt-2 truncate text-sm font-semibold text-white/85" title={entry.label}>
-                  {entry.label}
-                </div>
-                <div className="mt-1 truncate text-[11px] text-white/35" title={summary}>
-                  {summary}
-                </div>
+                  <div className="mt-2 truncate text-sm font-semibold text-white/85" title={entry.label}>
+                    {entry.label}
+                  </div>
+                  <div className="mt-1 truncate text-[11px] text-white/35" title={summary}>
+                    {summary}
+                  </div>
 
-                <div className="mt-3 flex items-center justify-between gap-2 text-[10px] text-white/30">
-                  <span>{entry.operationsCount} ops</span>
-                  <span>{entry.snapshot.composition.sections.length} sections</span>
-                </div>
+                  <div className="mt-3 flex items-center justify-between gap-2 text-[10px] text-white/30">
+                    <span>{entry.operationsCount} ops</span>
+                    <span>{entry.snapshot.composition.sections.length} sections</span>
+                  </div>
+                </button>
+
+                {onRestore && !entry.active ? (
+                  <button
+                    type="button"
+                    onClick={() => onRestore(entry.id)}
+                    className="mx-3 mb-3 rounded-md border border-violet-300/15 bg-violet-300/[0.06] px-2 py-1.5 text-[10px] font-semibold text-violet-100/70 transition hover:bg-violet-300/10 hover:text-violet-100"
+                  >
+                    Restore as new edit
+                  </button>
+                ) : null}
 
                 {index < timeline.length - 1 ? (
                   <span
@@ -83,7 +99,7 @@ export function StudioHistoryTimeline({
                     className="pointer-events-none absolute -right-2.5 top-1/2 h-px w-3 bg-white/10"
                   />
                 ) : null}
-              </button>
+              </div>
             );
           })}
         </div>

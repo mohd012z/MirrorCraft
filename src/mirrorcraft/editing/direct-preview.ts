@@ -1,7 +1,7 @@
 import { getEditParameter } from "@/mirrorcraft/editing/registry";
 import type { EditOperation, EditTarget, EditValue } from "@/mirrorcraft/editing/types";
 
-export interface DirectPreviewSelection extends EditTarget {}
+export type DirectPreviewSelection = EditTarget;
 
 export type DirectPreviewEditRequest =
   | { type: "text"; value: string }

@@ -11,7 +11,12 @@ export type Code360NodeType =
   | "interaction"
   | "api-endpoint"
   | "storage"
-  | "generated-artifact";
+  | "generated-artifact"
+  | "page"
+  | "group"
+  | "container"
+  | "content"
+  | "database";
 
 export type Code360EdgeType =
   | "imports"
@@ -24,7 +29,10 @@ export type Code360EdgeType =
   | "reads"
   | "writes"
   | "generates"
-  | "validated-by";
+  | "validated-by"
+  | "contains"
+  | "binds"
+  | "inherits";
 
 export interface Code360Node {
   id: string;
@@ -77,7 +85,9 @@ export class Code360Index {
     ];
     const ids = new Set<string>();
     for (const edge of edges) ids.add(edge.from === id ? edge.to : edge.from);
-    return [...ids].map((nodeId) => this.graph.nodes[nodeId]).filter(Boolean);
+    return [...ids]
+      .map((nodeId) => this.graph.nodes[nodeId])
+      .filter((node): node is Code360Node => Boolean(node));
   }
 
   findBySourcePath(sourcePath: string): Code360Node[] {

@@ -45,6 +45,9 @@ const googleModule = await loadTypeScriptModule(
 const providerMatrix = await loadTypeScriptModule(
   "../src/mirrorcraft/hosting/provider-catalog.ts",
 );
+const hostingClassifier = await loadTypeScriptModule(
+  "../src/mirrorcraft/hosting/classifier.ts",
+);
 
 const sensitiveText = [
   "Authorization: Bearer abc.def.ghi-super-secret",
@@ -230,5 +233,73 @@ for (const provider of providerMatrix.PROVIDER_CATALOG) {
 }
 
 assert.equal(providerMatrix.getProviderProfile("does-not-exist"), undefined);
+
+const staticPersonalPlan = hostingClassifier.classifyFreeHosting({
+  runtime: "static",
+  commercialUse: false,
+  requireCustomDomain: true,
+  requiredCapabilities: ["hosting"],
+  verifiedAt: "2026-09-27",
+  maxEvidenceAgeDays: 45,
+}, providerMatrix.PROVIDER_CATALOG);
+assert.ok(staticPersonalPlan.eligible.some((candidate) => candidate.providerId === "github-pages"));
+assert.ok(staticPersonalPlan.eligible.some((candidate) => candidate.providerId === "cloudflare-pages"));
+assert.ok(staticPersonalPlan.eligible.some((candidate) => candidate.providerId === "vercel"));
+assert.ok(staticPersonalPlan.eligible.some((candidate) => candidate.providerId === "netlify"));
+assert.ok(staticPersonalPlan.eligible.every((candidate) => candidate.zeroCostEvidenceReady));
+
+const commercialStaticPlan = hostingClassifier.classifyFreeHosting({
+  runtime: "static",
+  commercialUse: true,
+  requireCustomDomain: true,
+  requiredCapabilities: ["hosting"],
+  verifiedAt: "2026-09-27",
+  maxEvidenceAgeDays: 45,
+}, providerMatrix.PROVIDER_CATALOG);
+const blockedGithub = commercialStaticPlan.blocked.find((candidate) => candidate.providerId === "github-pages");
+const blockedVercel = commercialStaticPlan.blocked.find((candidate) => candidate.providerId === "vercel");
+assert.ok(blockedGithub?.blockers.some((reason) => reason.includes("commercial")));
+assert.ok(blockedVercel?.blockers.some((reason) => reason.includes("commercial")));
+
+const serverlessCommercialPlan = hostingClassifier.classifyFreeHosting({
+  runtime: "serverless",
+  commercialUse: true,
+  requireCustomDomain: false,
+  requiredCapabilities: ["hosting", "functions"],
+  verifiedAt: "2026-09-27",
+  maxEvidenceAgeDays: 45,
+}, providerMatrix.PROVIDER_CATALOG);
+assert.ok(serverlessCommercialPlan.blocked.some((candidate) => candidate.providerId === "github-pages"));
+assert.ok(serverlessCommercialPlan.blocked.some((candidate) => candidate.providerId === "vercel"));
+assert.ok(serverlessCommercialPlan.eligible.some((candidate) => candidate.providerId === "netlify"));
+
+const stalePlan = hostingClassifier.classifyFreeHosting({
+  runtime: "static",
+  commercialUse: false,
+  requireCustomDomain: false,
+  requiredCapabilities: ["hosting"],
+  verifiedAt: "2027-03-01",
+  maxEvidenceAgeDays: 30,
+}, providerMatrix.PROVIDER_CATALOG);
+assert.equal(stalePlan.eligible.length, 0);
+assert.ok(stalePlan.blocked.some((candidate) => candidate.blockers.some((reason) => reason.includes("stale"))));
+
+const unknownFreeProfile = {
+  ...githubPages,
+  id: "unknown-free-host",
+  freeTier: "unknown",
+  commercialUse: "allowed",
+};
+const unknownFreePlan = hostingClassifier.classifyFreeHosting({
+  runtime: "static",
+  commercialUse: false,
+  requireCustomDomain: false,
+  requiredCapabilities: ["hosting"],
+  verifiedAt: "2026-09-27",
+  maxEvidenceAgeDays: 45,
+}, [unknownFreeProfile]);
+assert.equal(unknownFreePlan.eligible.length, 0);
+assert.equal(unknownFreePlan.blocked[0]?.zeroCostEvidenceReady, false);
+assert.ok(unknownFreePlan.blocked[0]?.blockers.some((reason) => reason.includes("free-tier")));
 
 console.log("MirrorCraft integration boundary smoke passed");

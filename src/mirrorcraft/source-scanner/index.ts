@@ -14,6 +14,7 @@ export interface RuntimeEvidence {
     | "ssr"
     | "websocket"
     | "database"
+    | "filesystem-read"
     | "filesystem-write"
     | "server-auth"
     | "static-limitation";
@@ -29,7 +30,7 @@ export interface SourceRuntimeAnalysis extends DeploymentAnalysisInput {
 
 const DATABASE_PATTERNS: RegExp[] = [
   /\b(prisma|drizzle|mongoose|pg|mysql2|better-sqlite3)\b/i,
-  /\b(createClient|createServerClient)\s*\(/,
+  /\bcreateServerClient\s*\(/,
   /DATABASE_URL|POSTGRES_URL|MYSQL_URL|MONGODB_URI/i,
 ];
 
@@ -44,7 +45,13 @@ const SERVER_AUTH_PATTERNS: RegExp[] = [
 
 const FILE_WRITE_PATTERNS: RegExp[] = [
   /\b(writeFile|writeFileSync|appendFile|appendFileSync|createWriteStream|mkdir|mkdirSync|rm|rmSync|unlink|unlinkSync)\s*\(/,
-  /from\s+["']node:fs["']|from\s+["']fs["']/,
+  /import\s+(?!type\b)[^;]*\b(writeFile|writeFileSync|appendFile|appendFileSync|createWriteStream|mkdir|mkdirSync|rm|rmSync|unlink|unlinkSync)\b[^;]*from\s+["'](?:node:)?fs(?:\/promises)?["']/,
+];
+
+const FILESYSTEM_RUNTIME_PATTERNS: RegExp[] = [
+  /\b(readFile|readFileSync|createReadStream|readdir|readdirSync|stat|statSync|access|accessSync)\s*\(/,
+  /import\s+(?!type\b)[^;]*from\s+["'](?:node:)?fs(?:\/promises)?["']/,
+  /require\(["'](?:node:)?fs(?:\/promises)?["']\)/,
 ];
 
 function lineFor(content: string, index: number): number {
@@ -78,7 +85,7 @@ function isPageRoute(path: string): boolean {
 }
 
 function isApiRoute(path: string): boolean {
-  return /(?:^|\/)app\/api\/(?:.+\/)?route\.(?:ts|js)$/.test(path) ||
+  return /(?:^|\/)app\/(?:.+\/)?route\.(?:ts|js)$/.test(path) ||
     /(?:^|\/)pages\/api\/.+\.(?:ts|js)$/.test(path);
 }
 
@@ -145,10 +152,19 @@ export function scanSourceRuntime(files: SourceFileInput[]): SourceRuntimeAnalys
       }
     }
 
-    if (!writableFilesystemRuntime) {
-      for (const pattern of FILE_WRITE_PATTERNS) {
-        if (addEvidence(evidence, file, "filesystem-write", pattern, "Writable filesystem runtime signal detected.", 0.88)) {
-          writableFilesystemRuntime = true;
+    let fileWritesRuntime = false;
+    for (const pattern of FILE_WRITE_PATTERNS) {
+      if (addEvidence(evidence, file, "filesystem-write", pattern, "Writable filesystem runtime signal detected.", 0.92)) {
+        fileWritesRuntime = true;
+        writableFilesystemRuntime = true;
+        break;
+      }
+    }
+
+    if (!fileWritesRuntime) {
+      for (const pattern of FILESYSTEM_RUNTIME_PATTERNS) {
+        if (addEvidence(evidence, file, "filesystem-read", pattern, "Read-only filesystem runtime signal detected.", 0.86)) {
+          unsupportedStaticFeatures.add("runtime filesystem access");
           break;
         }
       }

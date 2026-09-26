@@ -62,3 +62,6 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Studio Playwright smoke
+        run: npm run smoke:studio

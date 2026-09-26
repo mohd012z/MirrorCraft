@@ -1,3 +1,5 @@
+export * from "@/mirrorcraft/design-library/advanced";
+
 export type TemplateId =
   | "saas"
   | "dashboard"

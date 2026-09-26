@@ -1,7 +1,6 @@
 import Link from "next/link";
 
-import { PreviewCanvas } from "@/app/studio/preview-canvas";
-import { SectionComposerPanel } from "@/app/studio/section-composer-panel";
+import { StudioWorkspace } from "@/app/studio/studio-workspace";
 
 export default function StudioPage() {
   return (
@@ -32,22 +31,8 @@ export default function StudioPage() {
             </nav>
           </aside>
 
-          <section className="min-w-0 space-y-5">
-            <div>
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <div className="flex gap-1 rounded-lg border border-white/10 bg-white/[0.03] p-1 text-xs text-white/60">
-                  {['Preview', 'Design', 'Original', 'Diff', 'Responsive', 'Inspect'].map((item, index) => (
-                    <button key={item} type="button" className={`rounded-md px-3 py-1.5 ${index === 1 ? 'bg-white/10 text-white' : 'hover:text-white'}`}>
-                      {item}
-                    </button>
-                  ))}
-                </div>
-                <div className="text-xs text-emerald-300">Direct edit enabled</div>
-              </div>
-              <PreviewCanvas />
-            </div>
-
-            <SectionComposerPanel />
+          <section className="min-w-0">
+            <StudioWorkspace />
           </section>
 
           <aside className="hidden rounded-2xl border border-white/10 bg-white/[0.03] p-4 xl:block">

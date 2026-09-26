@@ -42,6 +42,9 @@ const registryModule = await loadTypeScriptModule(
 const googleModule = await loadTypeScriptModule(
   "../src/mirrorcraft/integrations/providers/google.ts",
 );
+const providerMatrix = await loadTypeScriptModule(
+  "../src/mirrorcraft/hosting/provider-catalog.ts",
+);
 
 const sensitiveText = [
   "Authorization: Bearer abc.def.ghi-super-secret",
@@ -168,5 +171,64 @@ assert.throws(
     }),
   /must use google secret references/,
 );
+
+const providerIds = providerMatrix.PROVIDER_CATALOG.map((provider) => provider.id);
+for (const expectedId of [
+  "github-pages",
+  "cloudflare-pages",
+  "vercel",
+  "netlify",
+  "supabase",
+  "neon",
+]) {
+  assert.ok(providerIds.includes(expectedId), `Missing provider ${expectedId}`);
+}
+
+const githubPages = providerMatrix.getProviderProfile("github-pages");
+assert.ok(githubPages);
+assert.equal(githubPages.freeTier, "yes");
+assert.equal(githubPages.commercialUse, "restricted");
+assert.deepEqual(githubPages.runtimes, ["static"]);
+assert.equal(githubPages.limits.siteSizeMb, 1024);
+
+const cloudflare = providerMatrix.getProviderProfile("cloudflare-pages");
+assert.ok(cloudflare);
+assert.equal(cloudflare.freeTier, "yes");
+assert.equal(cloudflare.limits.monthlyBuilds, 500);
+assert.equal(cloudflare.limits.maxFilesPerSite, 20_000);
+assert.equal(cloudflare.limits.maxAssetMiB, 25);
+
+const vercel = providerMatrix.getProviderProfile("vercel");
+assert.ok(vercel);
+assert.equal(vercel.freeTier, "yes");
+assert.equal(vercel.commercialUse, "restricted");
+assert.equal(vercel.limits.edgeRequestsPerMonth, 1_000_000);
+
+const netlify = providerMatrix.getProviderProfile("netlify");
+assert.ok(netlify);
+assert.equal(netlify.freeTier, "yes");
+assert.equal(netlify.limits.monthlyCredits, 300);
+assert.equal(netlify.limits.creditHardLimit, true);
+
+const supabase = providerMatrix.getProviderProfile("supabase");
+assert.ok(supabase);
+assert.equal(supabase.kind, "backend");
+assert.equal(supabase.freeTier, "yes");
+assert.equal(supabase.limits.freeProjects, 2);
+assert.equal(supabase.limits.databaseMbPerProject, 500);
+
+const neon = providerMatrix.getProviderProfile("neon");
+assert.ok(neon);
+assert.equal(neon.kind, "backend");
+assert.equal(neon.freeTier, "yes");
+assert.ok(neon.capabilities.includes("database"));
+
+for (const provider of providerMatrix.PROVIDER_CATALOG) {
+  assert.equal(provider.evidence.verifiedAt, "2026-09-26");
+  assert.ok(provider.evidence.source.startsWith("https://"));
+  assert.ok(provider.evidence.confidence > 0.5);
+}
+
+assert.equal(providerMatrix.getProviderProfile("does-not-exist"), undefined);
 
 console.log("MirrorCraft integration boundary smoke passed");

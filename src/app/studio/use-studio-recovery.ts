@@ -85,41 +85,45 @@ export function useStudioRecovery({
   }, [onHistoryChange]);
 
   useEffect(() => {
-    setStatus("checking");
-    setRecord(null);
-    setError(null);
+    const timer = window.setTimeout(() => {
+      setStatus("checking");
+      setRecord(null);
+      setError(null);
 
-    const baseline = createStudioSnapshot(
-      historyRef.current.present.composition,
-      historyRef.current.present.content,
-    );
+      const baseline = createStudioSnapshot(
+        historyRef.current.present.composition,
+        historyRef.current.present.content,
+      );
 
-    try {
-      const loaded = loadStudioRecovery(window.localStorage, projectId);
-      if (loaded.status === "empty") {
-        setLastSavedAt(null);
-        setStatus("active");
-        return;
+      try {
+        const loaded = loadStudioRecovery(window.localStorage, projectId);
+        if (loaded.status === "empty") {
+          setLastSavedAt(null);
+          setStatus("active");
+          return;
+        }
+
+        if (loaded.status === "invalid") {
+          setLastSavedAt(null);
+          setError(loaded.error);
+          setStatus("invalid");
+          return;
+        }
+
+        setLastSavedAt(loaded.record.savedAt);
+        if (snapshotHasMeaningfulChanges(baseline, loaded.record.snapshot)) {
+          setRecord(loaded.record);
+          setStatus("available");
+        } else {
+          setStatus("active");
+        }
+      } catch (storageError) {
+        setError(errorMessage(storageError));
+        setStatus("error");
       }
+    }, 0);
 
-      if (loaded.status === "invalid") {
-        setLastSavedAt(null);
-        setError(loaded.error);
-        setStatus("invalid");
-        return;
-      }
-
-      setLastSavedAt(loaded.record.savedAt);
-      if (snapshotHasMeaningfulChanges(baseline, loaded.record.snapshot)) {
-        setRecord(loaded.record);
-        setStatus("available");
-      } else {
-        setStatus("active");
-      }
-    } catch (storageError) {
-      setError(errorMessage(storageError));
-      setStatus("error");
-    }
+    return () => window.clearTimeout(timer);
   }, [projectId]);
 
   useEffect(() => {

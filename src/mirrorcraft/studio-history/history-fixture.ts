@@ -16,19 +16,13 @@ import {
   redoStudioHistory,
   summarizeStudioDiff,
   undoStudioHistory,
-} from "@/mirrorcraft/edit-history";
+} from "@/mirrorcraft/studio-history";
 
 const initialComposition = createPageComposition("fixture", ["hero-centered"]);
 const initialContent = createSectionContentState(initialComposition);
-const initialSnapshot = createStudioSnapshot(initialComposition, initialContent, {
-  id: "fixture:initial",
-  createdAt: "2026-09-26T00:00:00.000Z",
-});
+const initialSnapshot = createStudioSnapshot(initialComposition, initialContent);
 
-let history = createStudioHistory(initialComposition, initialContent, {
-  maxEntries: 20,
-  createdAt: "2026-09-26T00:00:00.000Z",
-});
+let history = createStudioHistory(initialSnapshot, 20);
 
 const hero = initialComposition.sections[0];
 const editedContent = setSectionSlotValue(
@@ -37,15 +31,14 @@ const editedContent = setSectionSlotValue(
   "heading",
   "Edited heading",
 );
-const editedSnapshot = createStudioSnapshot(initialComposition, editedContent, {
-  id: "fixture:edited",
-});
+const editedSnapshot = createStudioSnapshot(initialComposition, editedContent);
 const contentOperations = deriveStudioEditOperations(initialSnapshot, editedSnapshot);
 const contentDiff = summarizeStudioDiff(initialSnapshot, editedSnapshot);
 
 history = recordStudioSnapshot(history, editedSnapshot, {
   label: "Edit hero heading",
   operations: contentOperations,
+  timestamp: "2026-09-26T00:01:00.000Z",
 });
 
 if (!canUndoStudioHistory(history)) {
@@ -68,7 +61,6 @@ const expandedComposition = addSection(initialComposition, "faq-accordion");
 const expandedSnapshot = createStudioSnapshot(
   expandedComposition,
   createSectionContentState(expandedComposition),
-  { id: "fixture:expanded" },
 );
 const structureOperations = deriveStudioEditOperations(history.present, expandedSnapshot);
 const structureDiff = summarizeStudioDiff(history.present, expandedSnapshot);

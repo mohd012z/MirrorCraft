@@ -40,7 +40,8 @@
     "sync:skills": "node scripts/sync-skills.mjs",
     "sync:agents": "node scripts/sync-agent-rules.mjs",
     "smoke:example": "node scripts/smoke-clone-example.mjs",
-    "smoke:crypto": "node scripts/smoke-crypto.mjs"
+    "smoke:crypto": "node scripts/smoke-crypto.mjs",
+    "smoke:integrations": "node scripts/smoke-integration-boundary.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",

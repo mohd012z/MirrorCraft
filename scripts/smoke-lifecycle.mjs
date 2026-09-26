@@ -1,5 +1,14 @@
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { randomBytes } from "node:crypto";
+import {
+  mkdtemp,
+  mkdir,
+  readFile,
+  readdir,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, extname, join, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -113,10 +122,66 @@ async function loadModule(relativeSourcePath) {
   return import(pathToFileURL(outputPath).href);
 }
 
+async function findPlaintextMatches(directory, needle) {
+  const excludedDirectories = new Set([
+    ".git",
+    ".next",
+    "node_modules",
+    "out",
+    "coverage",
+  ]);
+  const textExtensions = new Set([
+    "",
+    ".css",
+    ".html",
+    ".js",
+    ".json",
+    ".jsx",
+    ".md",
+    ".mjs",
+    ".toml",
+    ".ts",
+    ".tsx",
+    ".txt",
+    ".xml",
+    ".yaml",
+    ".yml",
+  ]);
+  const matches = [];
+
+  async function walk(current) {
+    const entries = await readdir(current, { withFileTypes: true });
+    for (const entry of entries) {
+      const path = join(current, entry.name);
+      if (entry.isDirectory()) {
+        if (!excludedDirectories.has(entry.name)) await walk(path);
+        continue;
+      }
+      if (!entry.isFile() || !textExtensions.has(extname(entry.name))) continue;
+
+      try {
+        const content = await readFile(path, "utf8");
+        if (content.includes(needle)) matches.push(relative(ROOT, path));
+      } catch {
+        // Ignore unreadable or non-text files.
+      }
+    }
+  }
+
+  await walk(directory);
+  return matches;
+}
+
 try {
   const hosting = await loadModule("src/mirrorcraft/hosting/from-source.ts");
   const redaction = await loadModule("src/mirrorcraft/security/redaction.ts");
   const domain = await loadModule("src/mirrorcraft/domain/planner.ts");
+  const secrets = await loadModule("src/mirrorcraft/integrations/secrets.ts");
+  const sectionComposer = await loadModule("src/mirrorcraft/section-composer/index.ts");
+  const sectionContent = await loadModule("src/mirrorcraft/section-content/index.ts");
+  const studioHistory = await loadModule("src/mirrorcraft/studio-history/index.ts");
+  const mutationEngine = await loadModule("src/mirrorcraft/editing/mutation-engine.ts");
+  const publish = await loadModule("src/mirrorcraft/publish/index.ts");
 
   const commonOptions = {
     requireCustomDomain: false,
@@ -192,6 +257,39 @@ try {
   assert.equal(serverResult.plan.eligible.length, 0);
   assert.ok(serverResult.blockers.length > 0);
 
+  const composition = sectionComposer.createPageComposition("lifecycle", [
+    "hero-centered",
+  ]);
+  const content = sectionContent.createSectionContentState(composition);
+  const snapshot = studioHistory.createStudioSnapshot(composition, content);
+  const heroId = composition.sections[0].instanceId;
+  const headingNodeId = sectionContent.getSectionSlotNodeId(heroId, "heading");
+  const originalHeading = content.values[headingNodeId];
+  const mutationPlan = mutationEngine.planStudioMutation(
+    snapshot,
+    [
+      {
+        id: "lifecycle-content-edit",
+        category: "content",
+        parameterId: "content.text",
+        target: { nodeId: headingNodeId, kind: "content" },
+        before: originalHeading,
+        after: "Lifecycle verified heading",
+        viewport: { mode: "all" },
+        reversible: true,
+        verification: { level: "visual", required: true },
+      },
+    ],
+    { id: "lifecycle-mutation", label: "Lifecycle content edit" },
+  );
+  const appliedSnapshot = mutationEngine.applyStudioMutation(snapshot, mutationPlan);
+  assert.equal(
+    appliedSnapshot.content.values[headingNodeId],
+    "Lifecycle verified heading",
+  );
+  const rolledBackSnapshot = mutationEngine.rollbackStudioMutation(mutationPlan);
+  assert.equal(rolledBackSnapshot.content.values[headingNodeId], originalHeading);
+
   const domainPlan = domain.createCustomDomainPlan({
     providerId: "cloudflare",
     hostname: "example.test",
@@ -213,21 +311,88 @@ try {
   assert.equal(failedDomain.ownershipVerified, false);
   assert.equal(failedDomain.verification.status, "failed");
 
-  const fakeSecret = "mc_lifecycle_fake_secret_93d7740f";
+  const fakeSecret = [
+    "mc",
+    "lifecycle",
+    randomBytes(18).toString("hex"),
+  ].join("_");
   const redacted = redaction.redactSensitiveText(
-    `Authorization: Bearer ${fakeSecret}`,
+    `Authorization: Bearer ${fakeSecret}\napi_key=${fakeSecret}`,
   );
   assert.equal(redacted.redacted, true);
   assert.ok(!redacted.text.includes(fakeSecret));
+
+  const secretRef = secrets.createSecretRef({
+    provider: "github",
+    connectionId: "lifecycle",
+    secretId: "deployment-token",
+  });
+
+  const unreadyManifest = {
+    projectId: "lifecycle-project",
+    revision: "rev-1",
+    branch: "feature/lifecycle",
+    commit: "deadbeef",
+    stage: "verified",
+    createdAt: "2026-09-27T00:00:00.000Z",
+    verification: [
+      {
+        id: "build",
+        label: "Build",
+        required: true,
+        status: "failed",
+        evidence: ["fixture failure"],
+      },
+    ],
+    fidelity: { overall: 0.99 },
+    alignmentPassed: true,
+    provenanceComplete: true,
+    unresolvedCriticalFindings: 0,
+    warnings: [],
+    artifacts: [],
+  };
+  const publishDecision = publish.evaluatePublish(unreadyManifest);
+  assert.equal(publishDecision.allowed, false);
+  assert.ok(
+    publishDecision.blockers.some((blocker) =>
+      blocker.includes("fully verified ready state"),
+    ),
+  );
+
+  let publisherCalled = false;
+  const publishGate = new publish.PublishGate({
+    async publish(manifest, target) {
+      publisherCalled = true;
+      return {
+        location: `fixture://${target}`,
+        revision: manifest.revision,
+      };
+    },
+  });
+  await assert.rejects(
+    () => publishGate.execute(unreadyManifest, "preview"),
+    /Publish blocked/,
+  );
+  assert.equal(publisherCalled, false);
 
   const report = JSON.stringify({
     staticResult,
     serverlessResult,
     serverResult,
+    mutation: {
+      applied: appliedSnapshot.content.values[headingNodeId],
+      rolledBack: rolledBackSnapshot.content.values[headingNodeId],
+    },
     failedDomain,
+    credential: secretRef,
     redacted,
+    publishDecision,
   });
   assert.ok(!report.includes(fakeSecret));
+  assert.match(report, /"scheme":"secret"/);
+
+  const repositorySecretMatches = await findPlaintextMatches(ROOT, fakeSecret);
+  assert.deepEqual(repositorySecretMatches, []);
 
   console.log("MirrorCraft lifecycle smoke passed");
 } finally {

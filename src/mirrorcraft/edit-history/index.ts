@@ -64,6 +64,16 @@ export interface StudioSnapshotDiff {
   changedContent: readonly string[];
 }
 
+export interface StudioTimelineEntry {
+  id: string;
+  label: string;
+  createdAt: string;
+  active: boolean;
+  position: number;
+  operationCount: number;
+  snapshot: StudioSnapshot;
+}
+
 interface SectionState {
   section: SectionInstance;
   index: number;
@@ -339,6 +349,38 @@ export function canUndoStudioHistory(history: StudioHistory): boolean {
 
 export function canRedoStudioHistory(history: StudioHistory): boolean {
   return history.future.length > 0;
+}
+
+export function getStudioTimeline(history: StudioHistory): readonly StudioTimelineEntry[] {
+  const snapshots = [...history.past, history.present, ...history.future];
+  return snapshots.map((snapshot, position) => ({
+    id: snapshot.id,
+    label: snapshot.label,
+    createdAt: snapshot.createdAt,
+    active: snapshot.id === history.present.id,
+    position,
+    operationCount: snapshot.operations.length,
+    snapshot,
+  }));
+}
+
+export function jumpToStudioSnapshot(
+  history: StudioHistory,
+  snapshotIdToActivate: string,
+): StudioHistory {
+  const snapshots = [...history.past, history.present, ...history.future];
+  const targetIndex = snapshots.findIndex((snapshot) => snapshot.id === snapshotIdToActivate);
+  if (targetIndex < 0) return history;
+
+  const target = snapshots[targetIndex];
+  if (target.id === history.present.id) return history;
+
+  return {
+    ...history,
+    present: target,
+    past: snapshots.slice(0, targetIndex),
+    future: snapshots.slice(targetIndex + 1),
+  };
 }
 
 export function summarizeStudioTransition(

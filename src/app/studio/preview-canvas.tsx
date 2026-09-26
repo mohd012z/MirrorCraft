@@ -128,7 +128,7 @@ export function PreviewCanvas() {
     setSelection(next);
     setEditor(null);
     setActiveAction(null);
-    setStatus(`Selected ${next.target.nodeId}`);
+    setStatus(`Selected ${next.nodeId}`);
   }
 
   function onCanvasClick(event: React.MouseEvent<HTMLDivElement>) {
@@ -142,7 +142,7 @@ export function PreviewCanvas() {
     if (!selection) return;
     setActiveAction(action.id);
 
-    const nodeId = selection.target.nodeId;
+    const nodeId = selection.nodeId;
     let initialValue = values[nodeId] ?? "";
     if (action.id === "edit-url") initialValue = values[`${nodeId}:url`] ?? "";
     if (action.id === "ask-ai") initialValue = "";
@@ -152,7 +152,7 @@ export function PreviewCanvas() {
       return;
     }
     if (action.id === "open-code") {
-      setStatus(selection.target.sourcePath ? `Code: ${selection.target.sourcePath}` : "No source path");
+      setStatus(selection.sourcePath ? `Code: ${selection.sourcePath}` : "No source path");
       return;
     }
     if (action.id === "edit-style") {
@@ -160,7 +160,7 @@ export function PreviewCanvas() {
       return;
     }
 
-    const mode =
+    const kind =
       action.id === "edit-text"
         ? "text"
         : action.id === "edit-url"
@@ -171,24 +171,24 @@ export function PreviewCanvas() {
               ? "icon"
               : "prompt";
 
-    setEditor(createInlineEditSession(selection, mode, initialValue));
+    setEditor(createInlineEditSession(selection, kind, initialValue));
   }
 
   function commitEditor() {
     if (!editor || !selection) return;
     const committed = commitInlineEditSession(editor);
-    const nodeId = selection.target.nodeId;
+    const nodeId = selection.nodeId;
 
-    if (committed.mode === "url") {
+    if (committed.kind === "url") {
       setValues((current) => ({ ...current, [`${nodeId}:url`]: committed.value }));
-    } else if (committed.mode === "prompt") {
+    } else if (committed.kind === "prompt") {
       setStatus(`AI edit queued for ${nodeId}: ${committed.value || "empty prompt"}`);
     } else {
       setValues((current) => ({ ...current, [nodeId]: committed.value }));
     }
 
     setEditor(null);
-    setStatus(`${committed.mode} edit committed`);
+    setStatus(`${committed.kind} edit committed`);
   }
 
   return (
@@ -278,7 +278,7 @@ export function PreviewCanvas() {
         {editor ? (
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <span className="min-w-16 text-xs font-semibold uppercase tracking-wide text-violet-300">
-              {editor.mode}
+              {editor.kind}
             </span>
             <input
               autoFocus

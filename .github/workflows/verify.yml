@@ -48,6 +48,9 @@ jobs:
       - name: Provider adapter smoke
         run: npm run smoke:providers
 
+      - name: Editing plan contracts smoke
+        run: npm run smoke:editing-plan
+
       - name: Runtime classifier smoke
         run: npm run smoke:runtime
 

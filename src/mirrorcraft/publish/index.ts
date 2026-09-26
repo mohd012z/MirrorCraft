@@ -1,24 +1,7 @@
+import type { ReleaseManifest } from "@/mirrorcraft/release-manifest";
+import { releaseReady } from "@/mirrorcraft/release-manifest";
+
 export type PublishTarget = "preview" | "production" | "artifact";
-
-export interface VerificationCheck {
-  id: string;
-  name: string;
-  status: "passed" | "failed" | "skipped" | "pending";
-  evidence?: string[];
-}
-
-export interface PublishManifest {
-  projectId: string;
-  revision: string;
-  target: PublishTarget;
-  createdAt: string;
-  sourceBranch?: string;
-  output?: string;
-  checks: VerificationCheck[];
-  provenanceComplete: boolean;
-  alignmentPassed: boolean;
-  unresolvedCriticalFindings: number;
-}
 
 export interface PublishDecision {
   allowed: boolean;
@@ -27,76 +10,47 @@ export interface PublishDecision {
 }
 
 export interface PublishPolicy {
-  requireBuild: boolean;
-  requireTypecheck: boolean;
-  requireLint: boolean;
+  requireReadyStage: boolean;
   requireProvenance: boolean;
   requireAlignment: boolean;
-  allowSkippedOptionalChecks: boolean;
+  allowWarnings: boolean;
 }
 
 export const defaultPublishPolicy: PublishPolicy = {
-  requireBuild: true,
-  requireTypecheck: true,
-  requireLint: true,
+  requireReadyStage: true,
   requireProvenance: true,
   requireAlignment: true,
-  allowSkippedOptionalChecks: true,
+  allowWarnings: true,
 };
 
-function findCheck(manifest: PublishManifest, id: string): VerificationCheck | undefined {
-  return manifest.checks.find((check) => check.id === id);
-}
-
 export function evaluatePublish(
-  manifest: PublishManifest,
+  manifest: ReleaseManifest,
   policy: PublishPolicy = defaultPublishPolicy,
 ): PublishDecision {
   const blockers: string[] = [];
-  const warnings: string[] = [];
+  const warnings = [...manifest.warnings];
 
-  const requiredChecks: Array<[boolean, string, string]> = [
-    [policy.requireBuild, "build", "Production build must pass before publish."],
-    [policy.requireTypecheck, "typecheck", "TypeScript verification must pass before publish."],
-    [policy.requireLint, "lint", "Lint verification must pass before publish."],
-  ];
-
-  for (const [required, id, message] of requiredChecks) {
-    if (!required) continue;
-    const check = findCheck(manifest, id);
-    if (!check || check.status !== "passed") blockers.push(message);
+  if (policy.requireReadyStage && !releaseReady(manifest)) {
+    blockers.push("ReleaseManifest is not in a fully verified ready state.");
   }
-
   if (policy.requireProvenance && !manifest.provenanceComplete) {
     blockers.push("CodeTransparent provenance is incomplete.");
   }
-
   if (policy.requireAlignment && !manifest.alignmentPassed) {
     blockers.push("CodeAlign validation has not passed.");
   }
-
   if (manifest.unresolvedCriticalFindings > 0) {
     blockers.push(`${manifest.unresolvedCriticalFindings} unresolved critical finding(s) remain.`);
   }
-
-  for (const check of manifest.checks) {
-    if (check.status === "failed" && !requiredChecks.some(([, id]) => id === check.id)) {
-      warnings.push(`Optional check failed: ${check.name}`);
-    }
-    if (check.status === "skipped" && !policy.allowSkippedOptionalChecks) {
-      blockers.push(`Skipped verification is not permitted: ${check.name}`);
-    }
+  if (!policy.allowWarnings && warnings.length > 0) {
+    blockers.push(`${warnings.length} release warning(s) must be resolved.`);
   }
 
-  return {
-    allowed: blockers.length === 0,
-    blockers,
-    warnings,
-  };
+  return { allowed: blockers.length === 0, blockers, warnings };
 }
 
 export interface Publisher {
-  publish(manifest: PublishManifest): Promise<{ location: string; revision: string }>;
+  publish(manifest: ReleaseManifest, target: PublishTarget): Promise<{ location: string; revision: string }>;
 }
 
 export class PublishGate {
@@ -105,12 +59,14 @@ export class PublishGate {
     private readonly policy: PublishPolicy = defaultPublishPolicy,
   ) {}
 
-  async execute(manifest: PublishManifest): Promise<{ location: string; revision: string }> {
+  async execute(
+    manifest: ReleaseManifest,
+    target: PublishTarget,
+  ): Promise<{ location: string; revision: string }> {
     const decision = evaluatePublish(manifest, this.policy);
     if (!decision.allowed) {
       throw new Error(`Publish blocked:\n- ${decision.blockers.join("\n- ")}`);
     }
-
-    return this.publisher.publish(manifest);
+    return this.publisher.publish(manifest, target);
   }
 }

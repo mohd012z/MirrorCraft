@@ -5,6 +5,8 @@ import { useMemo, useState } from "react";
 import { EditableComposedPagePreview } from "@/app/studio/editable-composed-preview";
 import { SectionComposerPanel } from "@/app/studio/section-composer-panel";
 import { StudioHistoryExperience } from "@/app/studio/studio-history-experience";
+import { StudioRecoveryPanel } from "@/app/studio/studio-recovery-panel";
+import { useStudioRecovery } from "@/app/studio/use-studio-recovery";
 import {
   createStudioHistory,
   createStudioSnapshot,
@@ -32,6 +34,7 @@ const INITIAL_COMPOSITION = createPageComposition("home", [
 ]);
 
 const INITIAL_CONTENT = createSectionContentState(INITIAL_COMPOSITION);
+const STUDIO_RECOVERY_PROJECT_ID = "mirrorcraft-studio:home";
 
 export function StudioCompositionSurface() {
   const [history, setHistory] = useState(() =>
@@ -40,6 +43,12 @@ export function StudioCompositionSurface() {
       100,
     ),
   );
+
+  const recovery = useStudioRecovery({
+    projectId: STUDIO_RECOVERY_PROJECT_ID,
+    history,
+    onHistoryChange: setHistory,
+  });
 
   const composition = history.present.composition;
   const content = history.present.content;
@@ -72,6 +81,7 @@ export function StudioCompositionSurface() {
 
   return (
     <div className="space-y-5">
+      <StudioRecoveryPanel controller={recovery} />
       <StudioHistoryExperience history={history} onHistoryChange={setHistory} />
 
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.025] px-3 py-2 text-xs text-white/50">

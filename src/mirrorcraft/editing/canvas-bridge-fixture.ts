@@ -7,6 +7,7 @@ import {
 import type { WebStructureGraph } from "@/mirrorcraft/web-structure/types";
 
 const graph: WebStructureGraph = {
+  projectId: "mirrorcraft-preview-fixture",
   nodes: {
     "hero-title": {
       id: "hero-title",

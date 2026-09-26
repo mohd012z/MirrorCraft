@@ -19,7 +19,7 @@ import {
   type SectionInstance,
 } from "@/mirrorcraft/section-composer";
 
-const INITIAL_COMPOSITION = createPageComposition("home", [
+const DEFAULT_COMPOSITION = createPageComposition("home", [
   "navbar-simple",
   "hero-centered",
   "features-grid",
@@ -39,33 +39,43 @@ function variantsFor(section: SectionInstance): SectionPreset[] {
   return SECTION_PRESETS.filter((preset) => preset.kind === section.kind);
 }
 
-export function SectionComposerPanel() {
-  const [composition, setComposition] = useState<PageComposition>(INITIAL_COMPOSITION);
+export interface SectionComposerPanelProps {
+  composition?: PageComposition;
+  onCompositionChange?: (composition: PageComposition) => void;
+}
+
+export function SectionComposerPanel({
+  composition: controlledComposition,
+  onCompositionChange,
+}: SectionComposerPanelProps = {}) {
+  const [localComposition, setLocalComposition] = useState<PageComposition>(DEFAULT_COMPOSITION);
   const [presetToAdd, setPresetToAdd] = useState(SECTION_PRESETS[0].id);
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  const composition = controlledComposition ?? localComposition;
+
+  function commit(next: PageComposition) {
+    if (!controlledComposition) setLocalComposition(next);
+    onCompositionChange?.(next);
+  }
 
   const graph = useMemo(() => toSectionWebGraph(composition), [composition]);
   const visibleCount = composition.sections.filter((section) => !section.hidden).length;
 
   function addSelectedSection() {
-    setComposition((current) => addSection(current, presetToAdd));
+    commit(addSection(composition, presetToAdd));
   }
 
   function moveBy(instanceId: string, delta: number) {
-    setComposition((current) => {
-      const index = current.sections.findIndex((section) => section.instanceId === instanceId);
-      if (index < 0) return current;
-      return moveSection(current, instanceId, index + delta);
-    });
+    const index = composition.sections.findIndex((section) => section.instanceId === instanceId);
+    if (index < 0) return;
+    commit(moveSection(composition, instanceId, index + delta));
   }
 
   function dropBefore(targetId: string) {
     if (!draggingId || draggingId === targetId) return;
-    setComposition((current) => {
-      const targetIndex = current.sections.findIndex((section) => section.instanceId === targetId);
-      if (targetIndex < 0) return current;
-      return moveSection(current, draggingId, targetIndex);
-    });
+    const targetIndex = composition.sections.findIndex((section) => section.instanceId === targetId);
+    if (targetIndex < 0) return;
+    commit(moveSection(composition, draggingId, targetIndex));
     setDraggingId(null);
   }
 
@@ -148,11 +158,7 @@ export function SectionComposerPanel() {
                   <select
                     aria-label={`Replace ${preset.label} variant`}
                     value={section.presetId}
-                    onChange={(event) =>
-                      setComposition((current) =>
-                        replaceSectionVariant(current, section.instanceId, event.target.value),
-                      )
-                    }
+                    onChange={(event) => commit(replaceSectionVariant(composition, section.instanceId, event.target.value))}
                     className="rounded-md border border-white/10 bg-slate-950 px-2 py-1.5 text-xs text-white outline-none"
                   >
                     {variants.map((variant) => (
@@ -162,15 +168,15 @@ export function SectionComposerPanel() {
                 ) : null}
                 <ComposerButton label="↑" title="Move up" disabled={index === 0} onClick={() => moveBy(section.instanceId, -1)} />
                 <ComposerButton label="↓" title="Move down" disabled={index === composition.sections.length - 1} onClick={() => moveBy(section.instanceId, 1)} />
-                <ComposerButton label="Duplicate" onClick={() => setComposition((current) => duplicateSection(current, section.instanceId))} />
+                <ComposerButton label="Duplicate" onClick={() => commit(duplicateSection(composition, section.instanceId))} />
                 <ComposerButton
                   label={section.hidden ? "Show" : "Hide"}
-                  onClick={() => setComposition((current) => hideSection(current, section.instanceId, !section.hidden))}
+                  onClick={() => commit(hideSection(composition, section.instanceId, !section.hidden))}
                 />
                 <ComposerButton
                   label="Delete"
                   danger
-                  onClick={() => setComposition((current) => deleteSection(current, section.instanceId))}
+                  onClick={() => commit(deleteSection(composition, section.instanceId))}
                 />
               </div>
             </article>

@@ -39,6 +39,9 @@ const deployment = await loadTypeScriptModule(
 const runtimeBridge = await loadTypeScriptModule(
   "../src/mirrorcraft/hosting/runtime-bridge.ts",
 );
+const deploymentTargets = await loadTypeScriptModule(
+  "../src/mirrorcraft/deployment/targets.ts",
+);
 
 function classify(files) {
   const analysis = scanner.scanSourceRuntime(files);
@@ -98,5 +101,32 @@ const writableFilesystem = classify([
 assert.equal(writableFilesystem.analysis.writableFilesystemRuntime, true);
 assert.equal(writableFilesystem.recommendation.profile, "server-runtime");
 assert.equal(writableFilesystem.runtime, "server");
+
+assert.equal(
+  deploymentTargets.hostingProviderToDeploymentTarget("github-pages", "static"),
+  "github-pages",
+);
+assert.equal(
+  deploymentTargets.hostingProviderToDeploymentTarget("cloudflare-pages", "edge"),
+  "cloudflare-pages",
+);
+assert.equal(
+  deploymentTargets.hostingProviderToDeploymentTarget("netlify", "serverless"),
+  "netlify",
+);
+assert.equal(
+  deploymentTargets.hostingProviderToDeploymentTarget("firebase-hosting", "static"),
+  "firebase-hosting",
+);
+assert.equal(
+  deploymentTargets.hostingProviderToDeploymentTarget("cloud-run", "server"),
+  "google-cloud-run",
+);
+assert.equal(
+  deploymentTargets.hostingProviderToDeploymentTarget("supabase", "serverless"),
+  null,
+);
+assert.equal(deploymentTargets.isDeploymentTarget("container"), true);
+assert.equal(deploymentTargets.isDeploymentTarget("supabase"), false);
 
 console.log("MirrorCraft runtime classifier smoke passed");

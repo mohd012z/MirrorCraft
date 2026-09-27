@@ -23,6 +23,23 @@ export interface DeploymentProviderExecution {
   warnings: string[];
 }
 
+export interface DeploymentPolicyEnvelopeBinding {
+  projectId: string;
+  revision: string;
+  commit: string;
+}
+
+export interface DeploymentPolicyEnvelope {
+  version: number;
+  snapshotId: string;
+  projectId: string;
+  revision: string;
+  commit: string;
+  createdAt: string;
+  digest: string;
+  decision: RestrictionDecision;
+}
+
 export interface DeploymentRequest {
   target: DeploymentTarget;
   manifest: ReleaseManifest;
@@ -36,6 +53,8 @@ export interface DeploymentRequest {
   connection?: IntegrationConnectionSummary;
   /** Domain planning/verification metadata. No registrar credentials belong here. */
   domainPlan?: DomainPlan;
+  /** Revision-bound, non-secret policy snapshot. Router rejects snapshots from another project/revision/commit. */
+  policyEnvelope?: DeploymentPolicyEnvelope;
   /** Precomputed policy restrictions from access/hosting/domain planning. Router derives execution and publish readiness independently. */
   restrictions?: RestrictionDecision;
 }
@@ -54,6 +73,23 @@ export interface DeploymentAdapter {
   readonly target: DeploymentTarget;
   validate(request: DeploymentRequest): string[];
   publish(request: DeploymentRequest): Promise<DeploymentResult>;
+}
+
+function policyEnvelopeBindingErrors(
+  envelope: DeploymentPolicyEnvelope,
+  manifest: ReleaseManifest,
+): string[] {
+  const errors: string[] = [];
+  if (envelope.projectId !== manifest.projectId) {
+    errors.push("Policy envelope project does not match the release manifest.");
+  }
+  if (envelope.revision !== manifest.revision) {
+    errors.push("Policy envelope revision does not match the release manifest.");
+  }
+  if (envelope.commit !== manifest.commit) {
+    errors.push("Policy envelope commit does not match the release manifest.");
+  }
+  return errors;
 }
 
 export class DeploymentRouter {
@@ -75,6 +111,26 @@ export class DeploymentRouter {
       };
     }
 
+    if (request.policyEnvelope) {
+      const envelopeErrors = policyEnvelopeBindingErrors(
+        request.policyEnvelope,
+        request.manifest,
+      );
+      if (envelopeErrors.length > 0) {
+        return {
+          target: request.target,
+          status: "blocked",
+          revision: request.manifest.revision,
+          evidence: [
+            `policy-snapshot:${request.policyEnvelope.snapshotId}`,
+            `policy-revision:${request.policyEnvelope.revision}`,
+            `release-revision:${request.manifest.revision}`,
+          ],
+          errors: envelopeErrors,
+        };
+      }
+    }
+
     const executionRestrictions = restrictionsFromDeploymentExecution({
       target: request.target,
       ...(request.provider ? { provider: request.provider } : {}),
@@ -88,17 +144,20 @@ export class DeploymentRouter {
     const publishRestrictions = restrictionsFromPublishDecision(
       evaluatePublish(request.manifest),
     );
+    const envelopeRestrictions = request.policyEnvelope?.decision;
     const restrictionDecision = request.restrictions
       ? combineRestrictionDecisions(
           executionRestrictions,
           contextRestrictions,
           publishRestrictions,
+          ...(envelopeRestrictions ? [envelopeRestrictions] : []),
           request.restrictions,
         )
       : combineRestrictionDecisions(
           executionRestrictions,
           contextRestrictions,
           publishRestrictions,
+          ...(envelopeRestrictions ? [envelopeRestrictions] : []),
         );
 
     if (!restrictionDecision.allowed) {

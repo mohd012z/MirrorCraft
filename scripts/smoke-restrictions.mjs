@@ -214,9 +214,23 @@ try {
     ],
   };
 
+  const policyKeyPair = await globalThis.crypto.subtle.generateKey(
+    { name: "ECDSA", namedCurve: "P-256" },
+    false,
+    ["sign", "verify"],
+  );
+  const policySigner = revisionPolicy.createEcdsaP256PolicySigner(
+    "restriction-smoke-key",
+    policyKeyPair.privateKey,
+  );
+  const policyVerifier = revisionPolicy.createEcdsaP256PolicyVerifier(
+    new Map([["restriction-smoke-key", policyKeyPair.publicKey]]),
+  );
+
   let publishCalls = 0;
   const router = new deployment.DeploymentRouter({
     now: () => new Date("2026-09-27T09:05:00.000Z"),
+    policyVerifier,
   });
   router.register({
     target: "github-pages",
@@ -271,15 +285,19 @@ try {
       },
     ]),
   );
-  const validPolicyEnvelope = await revisionPolicy.createRevisionPolicyEnvelope({
-    snapshotId: "policy-rev-1",
-    manifest,
-    createdAt: "2026-09-27T09:00:00.000Z",
-    assessments,
-    decision: restrictions.createRestrictionDecision([]),
-  });
+  const validPolicyEnvelope = await revisionPolicy.createRevisionPolicyEnvelope(
+    {
+      snapshotId: "policy-rev-1",
+      manifest,
+      createdAt: "2026-09-27T09:00:00.000Z",
+      assessments,
+      decision: restrictions.createRestrictionDecision([]),
+    },
+    policySigner,
+  );
   assert.ok(Object.isFrozen(validPolicyEnvelope));
   assert.ok(Object.isFrozen(validPolicyEnvelope.assessments.integration));
+  assert.ok(Object.isFrozen(validPolicyEnvelope.attestation));
   assert.ok(/^sha256:[0-9a-f]{64}$/.test(validPolicyEnvelope.digest));
 
   const blocked = await router.publish({

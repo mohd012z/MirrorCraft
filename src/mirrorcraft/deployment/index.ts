@@ -6,6 +6,7 @@ import { restrictionsFromDeploymentContext } from "@/mirrorcraft/policy/deployme
 import {
   validateRevisionPolicyEnvelope,
   type RevisionPolicyEnvelope,
+  type RevisionPolicyEnvelopeVerifier,
 } from "@/mirrorcraft/policy/revision-envelope";
 import {
   combineRestrictionDecisions,
@@ -47,7 +48,7 @@ export interface DeploymentRequest {
   connection?: IntegrationConnectionSummary;
   /** Domain planning/verification metadata. No registrar credentials belong here. */
   domainPlan?: DomainPlan;
-  /** Revision-bound, non-secret policy snapshot. Router verifies binding, freshness, and SHA-256 integrity before execution. */
+  /** Revision-bound, non-secret policy snapshot. Router verifies binding, freshness, SHA-256 integrity, and trusted attestation before execution. */
   policyEnvelope?: RevisionPolicyEnvelope;
   /** Precomputed policy restrictions from access/hosting/domain planning. Router derives execution and publish readiness independently. */
   restrictions?: RestrictionDecision;
@@ -71,14 +72,17 @@ export interface DeploymentAdapter {
 
 export interface DeploymentRouterOptions {
   now?: () => Date;
+  policyVerifier?: RevisionPolicyEnvelopeVerifier;
 }
 
 export class DeploymentRouter {
   private readonly adapters = new Map<DeploymentTarget, DeploymentAdapter>();
   private readonly now: () => Date;
+  private readonly policyVerifier?: RevisionPolicyEnvelopeVerifier;
 
   constructor(options: DeploymentRouterOptions = {}) {
     this.now = options.now ?? (() => new Date());
+    this.policyVerifier = options.policyVerifier;
   }
 
   register(adapter: DeploymentAdapter): void {
@@ -102,6 +106,7 @@ export class DeploymentRouter {
         request.policyEnvelope,
         request.manifest,
         this.now(),
+        this.policyVerifier,
       );
       if (!envelopeValidation.valid) {
         return {

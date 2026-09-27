@@ -2,6 +2,8 @@ import type { Restriction, RestrictionDecision } from "@/mirrorcraft/policy/rest
 import type { ReleaseManifest } from "@/mirrorcraft/release-manifest";
 
 export const REVISION_POLICY_ENVELOPE_VERSION = 1 as const;
+export const DEFAULT_REVISION_POLICY_TTL_MS = 15 * 60 * 1000;
+export const MAX_REVISION_POLICY_TTL_MS = 60 * 60 * 1000;
 
 export interface RevisionPolicyEnvelope {
   readonly version: typeof REVISION_POLICY_ENVELOPE_VERSION;
@@ -10,6 +12,7 @@ export interface RevisionPolicyEnvelope {
   readonly revision: string;
   readonly commit: string;
   readonly createdAt: string;
+  readonly expiresAt: string;
   readonly digest: `sha256:${string}`;
   readonly decision: RestrictionDecision;
 }
@@ -18,6 +21,7 @@ export interface CreateRevisionPolicyEnvelopeInput {
   snapshotId: string;
   manifest: Pick<ReleaseManifest, "projectId" | "revision" | "commit">;
   createdAt: string;
+  ttlMs?: number;
   decision: RestrictionDecision;
 }
 
@@ -96,6 +100,7 @@ function payloadFromEnvelope(envelope: RevisionPolicyEnvelope): EnvelopePayload 
     revision: envelope.revision,
     commit: envelope.commit,
     createdAt: envelope.createdAt,
+    expiresAt: envelope.expiresAt,
     decision: envelope.decision,
   };
 }
@@ -114,24 +119,41 @@ function deepFreeze<T>(value: T): T {
   return value;
 }
 
+function validateTtl(ttlMs: number): number {
+  if (
+    !Number.isInteger(ttlMs) ||
+    ttlMs <= 0 ||
+    ttlMs > MAX_REVISION_POLICY_TTL_MS
+  ) {
+    throw new Error(
+      `Revision policy envelope ttlMs must be an integer between 1 and ${MAX_REVISION_POLICY_TTL_MS}`,
+    );
+  }
+  return ttlMs;
+}
+
 export async function createRevisionPolicyEnvelope(
   input: CreateRevisionPolicyEnvelopeInput,
 ): Promise<RevisionPolicyEnvelope> {
+  const createdAtMs = Date.parse(input.createdAt);
+  if (!Number.isFinite(createdAtMs)) {
+    throw new Error("Revision policy envelope createdAt must be a valid timestamp");
+  }
+  const ttlMs = validateTtl(input.ttlMs ?? DEFAULT_REVISION_POLICY_TTL_MS);
+
   const payload: EnvelopePayload = {
     version: REVISION_POLICY_ENVELOPE_VERSION,
     snapshotId: input.snapshotId.trim(),
     projectId: input.manifest.projectId,
     revision: input.manifest.revision,
     commit: input.manifest.commit,
-    createdAt: input.createdAt,
+    createdAt: new Date(createdAtMs).toISOString(),
+    expiresAt: new Date(createdAtMs + ttlMs).toISOString(),
     decision: cloneDecision(input.decision),
   };
 
   if (!payload.snapshotId) {
     throw new Error("Revision policy envelope snapshotId is required");
-  }
-  if (!Number.isFinite(Date.parse(payload.createdAt))) {
-    throw new Error("Revision policy envelope createdAt must be a valid timestamp");
   }
 
   const envelope: RevisionPolicyEnvelope = {
@@ -144,12 +166,14 @@ export async function createRevisionPolicyEnvelope(
 export async function validateRevisionPolicyEnvelope(
   envelope: RevisionPolicyEnvelope,
   manifest: Pick<ReleaseManifest, "projectId" | "revision" | "commit">,
+  now: Date = new Date(),
 ): Promise<RevisionPolicyEnvelopeValidation> {
   const errors: string[] = [];
   const evidence = [
     `policy-snapshot:${envelope.snapshotId}`,
     `policy-revision:${envelope.revision}`,
     `release-revision:${manifest.revision}`,
+    `policy-expires-at:${envelope.expiresAt}`,
   ];
 
   if (envelope.version !== REVISION_POLICY_ENVELOPE_VERSION) {
@@ -164,8 +188,23 @@ export async function validateRevisionPolicyEnvelope(
   if (envelope.commit !== manifest.commit) {
     errors.push("Policy envelope commit does not match the release manifest.");
   }
-  if (!Number.isFinite(Date.parse(envelope.createdAt))) {
+
+  const createdAtMs = Date.parse(envelope.createdAt);
+  const expiresAtMs = Date.parse(envelope.expiresAt);
+  if (!Number.isFinite(createdAtMs)) {
     errors.push("Policy envelope createdAt is invalid.");
+  }
+  if (!Number.isFinite(expiresAtMs)) {
+    errors.push("Policy envelope expiresAt is invalid.");
+  }
+  if (Number.isFinite(createdAtMs) && Number.isFinite(expiresAtMs)) {
+    const ttlMs = expiresAtMs - createdAtMs;
+    if (ttlMs <= 0 || ttlMs > MAX_REVISION_POLICY_TTL_MS) {
+      errors.push("Policy envelope freshness window is invalid or exceeds the maximum allowed TTL.");
+    }
+    if (now.getTime() >= expiresAtMs) {
+      errors.push("Policy envelope has expired and must be regenerated from current assessments.");
+    }
   }
 
   if (!/^sha256:[0-9a-f]{64}$/.test(envelope.digest)) {

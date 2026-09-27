@@ -97,6 +97,7 @@ try {
   const restrictions = await loadModule("src/mirrorcraft/policy/restrictions.ts");
   const access = await loadModule("src/mirrorcraft/intake/access-policy.ts");
   const deployment = await loadModule("src/mirrorcraft/deployment/index.ts");
+  const revisionPolicy = await loadModule("src/mirrorcraft/policy/revision-envelope.ts");
 
   const publicDecision = restrictions.restrictionsFromAccessDecision(access.classifyAccess({}));
   assert.equal(publicDecision.allowed, true);
@@ -249,21 +250,14 @@ try {
     createdAt: "2026-09-27T00:00:00.000Z",
     checkedAt: "2026-09-27T09:00:00.000Z",
   };
-  const validPolicyEnvelope = {
-    version: 1,
+  const validPolicyEnvelope = await revisionPolicy.createRevisionPolicyEnvelope({
     snapshotId: "policy-rev-1",
-    projectId: manifest.projectId,
-    revision: manifest.revision,
-    commit: manifest.commit,
+    manifest,
     createdAt: "2026-09-27T09:00:00.000Z",
-    digest: "sha256:fixture",
-    decision: {
-      allowed: true,
-      blockers: [],
-      warnings: [],
-      restrictions: [],
-    },
-  };
+    decision: restrictions.createRestrictionDecision([]),
+  });
+  assert.ok(Object.isFrozen(validPolicyEnvelope));
+  assert.ok(/^sha256:[0-9a-f]{64}$/.test(validPolicyEnvelope.digest));
 
   const blocked = await router.publish({
     target: "github-pages",

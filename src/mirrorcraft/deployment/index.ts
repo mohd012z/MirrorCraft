@@ -1,11 +1,7 @@
+import type { DeploymentTarget } from "@/mirrorcraft/deployment/targets";
 import type { ReleaseManifest } from "@/mirrorcraft/release-manifest";
 
-export type DeploymentTarget =
-  | "github-pages"
-  | "github-artifact"
-  | "vercel"
-  | "static-host"
-  | "local";
+export type { DeploymentTarget } from "@/mirrorcraft/deployment/targets";
 
 export interface DeploymentRequest {
   target: DeploymentTarget;

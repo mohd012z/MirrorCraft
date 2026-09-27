@@ -1,16 +1,12 @@
+import type { DeploymentTarget } from "@/mirrorcraft/deployment/targets";
+
+export type { DeploymentTarget } from "@/mirrorcraft/deployment/targets";
+
 export type DeploymentProfile =
   | "static-export"
   | "server-runtime"
   | "hybrid"
   | "artifact-only";
-
-export type DeploymentTarget =
-  | "github-pages"
-  | "vercel"
-  | "node"
-  | "container"
-  | "static-host"
-  | "artifact";
 
 export interface RuntimeRequirement {
   id: string;

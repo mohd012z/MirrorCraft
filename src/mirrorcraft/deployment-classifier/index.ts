@@ -36,6 +36,41 @@ export interface DeploymentRecommendation {
   reasons: string[];
 }
 
+const STATIC_COMPATIBLE_TARGETS: readonly DeploymentTarget[] = [
+  "github-pages",
+  "github-artifact",
+  "cloudflare-pages",
+  "vercel",
+  "netlify",
+  "firebase-hosting",
+  "static-host",
+  "artifact",
+  "local",
+];
+
+const SERVERLESS_COMPATIBLE_TARGETS: readonly DeploymentTarget[] = [
+  "github-artifact",
+  "vercel",
+  "netlify",
+  "google-cloud-run",
+  "node",
+  "container",
+  "artifact",
+  "local",
+];
+
+const DEDICATED_SERVER_COMPATIBLE_TARGETS: readonly DeploymentTarget[] = [
+  "github-artifact",
+  "node",
+  "container",
+  "artifact",
+  "local",
+];
+
+function copyTargets(targets: readonly DeploymentTarget[]): DeploymentTarget[] {
+  return [...targets];
+}
+
 export function classifyDeployment(
   input: DeploymentAnalysisInput,
 ): DeploymentRecommendation {
@@ -56,7 +91,7 @@ export function classifyDeployment(
   if (staticSafe) {
     return {
       profile: "static-export",
-      compatibleTargets: ["github-pages", "static-host", "vercel", "artifact"],
+      compatibleTargets: copyTargets(STATIC_COMPATIBLE_TARGETS),
       incompatibleTargets: [],
       requirements: serverRequirements,
       confidence: 0.98,
@@ -71,12 +106,34 @@ export function classifyDeployment(
     ...requiredServer.flatMap((requirement) => requirement.evidence),
     ...unsupported.map((feature) => `Static export limitation: ${feature}`),
   ];
+  const requiresDedicatedServer =
+    input.websocketServer || input.writableFilesystemRuntime;
+
+  if (requiresDedicatedServer) {
+    return {
+      profile: "server-runtime",
+      compatibleTargets: copyTargets(DEDICATED_SERVER_COMPATIBLE_TARGETS),
+      incompatibleTargets: [
+        { target: "github-pages", reasons },
+        { target: "cloudflare-pages", reasons },
+        { target: "vercel", reasons },
+        { target: "netlify", reasons },
+        { target: "firebase-hosting", reasons },
+        { target: "static-host", reasons },
+      ],
+      requirements: serverRequirements,
+      confidence: 0.98,
+      reasons,
+    };
+  }
 
   return {
     profile: "server-runtime",
-    compatibleTargets: ["vercel", "node", "container", "artifact"],
+    compatibleTargets: copyTargets(SERVERLESS_COMPATIBLE_TARGETS),
     incompatibleTargets: [
       { target: "github-pages", reasons },
+      { target: "cloudflare-pages", reasons },
+      { target: "firebase-hosting", reasons },
       { target: "static-host", reasons },
     ],
     requirements: serverRequirements,

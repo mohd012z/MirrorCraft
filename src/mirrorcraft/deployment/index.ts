@@ -47,7 +47,7 @@ export interface DeploymentRequest {
   connection?: IntegrationConnectionSummary;
   /** Domain planning/verification metadata. No registrar credentials belong here. */
   domainPlan?: DomainPlan;
-  /** Revision-bound, non-secret policy snapshot. Router verifies binding and SHA-256 integrity before execution. */
+  /** Revision-bound, non-secret policy snapshot. Router verifies binding, freshness, and SHA-256 integrity before execution. */
   policyEnvelope?: RevisionPolicyEnvelope;
   /** Precomputed policy restrictions from access/hosting/domain planning. Router derives execution and publish readiness independently. */
   restrictions?: RestrictionDecision;
@@ -69,8 +69,17 @@ export interface DeploymentAdapter {
   publish(request: DeploymentRequest): Promise<DeploymentResult>;
 }
 
+export interface DeploymentRouterOptions {
+  now?: () => Date;
+}
+
 export class DeploymentRouter {
   private readonly adapters = new Map<DeploymentTarget, DeploymentAdapter>();
+  private readonly now: () => Date;
+
+  constructor(options: DeploymentRouterOptions = {}) {
+    this.now = options.now ?? (() => new Date());
+  }
 
   register(adapter: DeploymentAdapter): void {
     this.adapters.set(adapter.target, adapter);
@@ -92,6 +101,7 @@ export class DeploymentRouter {
       const envelopeValidation = await validateRevisionPolicyEnvelope(
         request.policyEnvelope,
         request.manifest,
+        this.now(),
       );
       if (!envelopeValidation.valid) {
         return {

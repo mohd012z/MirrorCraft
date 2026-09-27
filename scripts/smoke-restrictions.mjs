@@ -107,6 +107,58 @@ try {
   assert.equal(challengeDecision.allowed, false);
   assert.equal(challengeDecision.blockers[0].code, "access-capture-blocked");
 
+  const accessEdit = restrictions.restrictionsFromEditOperation({
+    authorizedProject: false,
+    operation: {
+      id: "runtime-access-edit",
+      category: "access",
+      parameterId: "access.state",
+      target: { nodeId: "paywall", kind: "component" },
+      before: "locked",
+      after: "unlocked",
+      viewport: { mode: "all" },
+      reversible: true,
+      verification: { level: "full", required: true },
+    },
+  });
+  assert.equal(accessEdit.allowed, false);
+  assert.equal(accessEdit.blockers[0].code, "edit-access-state-unauthorized");
+
+  const expiredConnection = restrictions.restrictionsFromIntegrationConnection({
+    id: "github-primary",
+    providerId: "github",
+    authMode: "oauth",
+    health: "expired",
+    capabilities: ["source-control", "hosting"],
+    hasSecretMaterial: true,
+    secretCount: 1,
+    createdAt: "2026-09-27T00:00:00.000Z",
+  });
+  assert.equal(expiredConnection.allowed, false);
+  assert.equal(expiredConnection.blockers[0].code, "integration-not-ready");
+
+  const pendingDomain = restrictions.restrictionsFromDomainPlan({
+    providerId: "cloudflare",
+    mode: "custom-domain",
+    hostname: "example.test",
+    apex: "example.test",
+    dnsRecords: [],
+    ownershipVerified: false,
+    verification: { status: "pending", evidence: [] },
+    blockers: [],
+    warnings: [],
+  });
+  assert.equal(pendingDomain.allowed, false);
+  assert.equal(pendingDomain.blockers[0].code, "domain-unverified");
+
+  const fakeSecret = `runtime_${"restriction"}_secret_1234567890`;
+  const secretDecision = restrictions.restrictionsFromSerializedState(
+    `Authorization: Bearer ${fakeSecret}`,
+  );
+  assert.equal(secretDecision.allowed, false);
+  assert.equal(secretDecision.blockers[0].code, "secret-boundary-violation");
+  assert.ok(!JSON.stringify(secretDecision).includes(fakeSecret));
+
   const mismatch = restrictions.restrictionsFromDeploymentExecution({
     target: "vercel",
     provider: {

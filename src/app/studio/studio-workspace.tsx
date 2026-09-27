@@ -5,7 +5,13 @@ import { useState, type MouseEvent } from "react";
 import { PreviewCanvas } from "@/app/studio/preview-canvas";
 import { StudioCompositionSurface } from "@/app/studio/studio-composition-surface";
 import { StudioOperationsSurface } from "@/app/studio/studio-operations-surface";
+import { StudioRestrictionSurface } from "@/app/studio/studio-restriction-surface";
 import type { CanvasSelection } from "@/mirrorcraft/editing/canvas-bridge";
+import type { PolicyEnvelope } from "@/mirrorcraft/policy/envelope";
+
+export interface StudioWorkspaceProps {
+  policyEnvelope?: PolicyEnvelope | null;
+}
 
 function inferNodeKind(nodeId: string): string {
   if (nodeId.includes("image")) return "asset";
@@ -61,7 +67,9 @@ function selectionFromCanvasClick(
   };
 }
 
-export function StudioWorkspace() {
+export function StudioWorkspace({
+  policyEnvelope = null,
+}: StudioWorkspaceProps = {}) {
   const [selection, setSelection] = useState<CanvasSelection | null>(null);
 
   return (
@@ -91,6 +99,7 @@ export function StudioWorkspace() {
       </div>
       <StudioCompositionSurface />
       <StudioOperationsSurface selection={selection} />
+      <StudioRestrictionSurface envelope={policyEnvelope} />
     </div>
   );
 }

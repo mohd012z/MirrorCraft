@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   BUTTON_SHADOW_PRESETS,
@@ -126,6 +126,22 @@ function findPreset<T extends { id: string }>(items: readonly T[], id: string): 
   return items.find((item) => item.id === id) ?? items[0];
 }
 
+const VIEWPORTS = [
+  { id: "auto", label: "Auto" },
+  { id: "portrait", label: "Portrait 390" },
+  { id: "landscape", label: "Landscape 844" },
+  { id: "desktop", label: "Desktop 1440" },
+  { id: "wide", label: "Fit" },
+] as const;
+
+type ViewportId = (typeof VIEWPORTS)[number]["id"];
+
+const VIEWPORT_WIDTH: Record<Exclude<ViewportId, "auto" | "wide">, number> = {
+  portrait: 390,
+  landscape: 844,
+  desktop: 1440,
+};
+
 export function PreviewCanvas() {
   const hostRef = useRef<HTMLDivElement>(null);
   const [values, setValues] = useState<EditableValues>(INITIAL_VALUES);
@@ -134,6 +150,22 @@ export function PreviewCanvas() {
   const [editor, setEditor] = useState<InlineEditSession | null>(null);
   const [activeAction, setActiveAction] = useState<PreviewActionId | null>(null);
   const [status, setStatus] = useState("Ready");
+  const [viewport, setViewport] = useState<ViewportId>("auto");
+  const [deviceLandscape, setDeviceLandscape] = useState(false);
+
+  // Auto mode: follow the physical device orientation so the canvas repositions
+  // itself in portrait vs landscape without the user touching the chips.
+  useEffect(() => {
+    const mq = window.matchMedia("(orientation: landscape)");
+    const update = () => setDeviceLandscape(mq.matches);
+    update();
+    mq.addEventListener?.("change", update);
+    return () => mq.removeEventListener?.("change", update);
+  }, []);
+
+  const resolvedViewport: Exclude<ViewportId, "auto"> =
+    viewport === "auto" ? (deviceLandscape ? "landscape" : "portrait") : viewport;
+  const viewportPx = resolvedViewport === "wide" ? undefined : VIEWPORT_WIDTH[resolvedViewport];
 
   const template = findPreset(TEMPLATE_PRESETS, design.templateId);
   const heroVariant = findPreset(SECTION_PRESETS.filter((item) => item.kind === "hero"), design.heroVariantId);
@@ -265,7 +297,22 @@ export function PreviewCanvas() {
       <div className="grid min-h-[720px] grid-rows-[auto_1fr_auto] overflow-hidden rounded-2xl border border-white/10 bg-[#111318] shadow-2xl">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3 text-xs text-white/70">
           <div className="flex items-center gap-2"><span className="size-2 rounded-full bg-emerald-400" />Direct Edit Preview</div>
-          <div className="flex gap-2"><span className="rounded-md bg-white/5 px-2 py-1">390</span><span className="rounded-md bg-white/10 px-2 py-1 text-white">1440</span><span className="rounded-md bg-white/5 px-2 py-1">Responsive</span></div>
+          <div className="flex flex-wrap items-center gap-1 rounded-lg border border-white/10 bg-white/[0.03] p-1">
+            {VIEWPORTS.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setViewport(item.id)}
+                aria-pressed={viewport === item.id}
+                className={`rounded-md px-2.5 py-1 transition-colors ${viewport === item.id ? "bg-emerald-500/20 text-emerald-200" : "text-white/60 hover:bg-white/5 hover:text-white"}`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+          <div className="text-white/40">
+            {resolvedViewport === "wide" ? "fit to container" : `${VIEWPORT_WIDTH[resolvedViewport]}px`}
+          </div>
         </div>
 
         <div className="relative overflow-auto bg-[#eceff3] p-5 sm:p-8">
@@ -273,7 +320,12 @@ export function PreviewCanvas() {
             ref={hostRef}
             onClick={onCanvasClick}
             className={`relative mx-auto min-h-[560px] max-w-5xl overflow-hidden shadow-xl ${template.surfaceClass} ${gradient.className} ${radius.className}`}
-            style={{ fontFamily: font.family, backgroundColor: palette.background, color: palette.foreground }}
+            style={{
+              width: viewportPx ? `min(100%, ${viewportPx}px)` : undefined,
+              fontFamily: font.family,
+              backgroundColor: palette.background,
+              color: palette.foreground,
+            }}
           >
             <section data-mirrorcraft-node="hero" className={`min-h-[560px] p-8 md:p-14 ${spacing.section} ${heroVariant.layoutClass}`}>
               <div className={textAlign.className}>

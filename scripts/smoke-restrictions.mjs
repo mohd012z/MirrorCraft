@@ -215,7 +215,9 @@ try {
   };
 
   let publishCalls = 0;
-  const router = new deployment.DeploymentRouter();
+  const router = new deployment.DeploymentRouter({
+    now: () => new Date("2026-09-27T09:05:00.000Z"),
+  });
   router.register({
     target: "github-pages",
     validate: () => [],

@@ -95,6 +95,7 @@ async function loadModule(relativeSourcePath) {
 
 try {
   const deployment = await loadModule("src/mirrorcraft/deployment/index.ts");
+  const revisionPolicy = await loadModule("src/mirrorcraft/policy/revision-envelope.ts");
 
   const manifest = {
     projectId: "policy-revision-smoke",
@@ -216,6 +217,51 @@ try {
 
   assert.equal(tampered.status, "blocked", "tampered policy envelope must fail closed");
   assert.equal(publishCalls, 0, "adapter must not run for a tampered policy envelope");
+
+  let expiredPublishCalls = 0;
+  const expiryRouter = new deployment.DeploymentRouter({
+    now: () => new Date("2026-09-27T10:16:00.000Z"),
+  });
+  expiryRouter.register({
+    target: "github-pages",
+    validate: () => [],
+    publish: async (request) => {
+      expiredPublishCalls += 1;
+      return {
+        target: request.target,
+        status: "published",
+        revision: request.manifest.revision,
+        location: "https://example.invalid",
+        evidence: ["fixture-adapter"],
+        errors: [],
+      };
+    },
+  });
+
+  const expiredPolicyEnvelope = await revisionPolicy.createRevisionPolicyEnvelope({
+    snapshotId: "policy-rev-current-expired",
+    manifest,
+    createdAt: "2026-09-27T10:00:00.000Z",
+    ttlMs: 15 * 60 * 1000,
+    decision: {
+      allowed: true,
+      blockers: [],
+      warnings: [],
+      restrictions: [],
+    },
+  });
+
+  const expired = await expiryRouter.publish({
+    target: "github-pages",
+    manifest,
+    artifactPath: "out",
+    provider,
+    connection,
+    policyEnvelope: expiredPolicyEnvelope,
+  });
+
+  assert.equal(expired.status, "blocked", "expired policy envelope must fail closed");
+  assert.equal(expiredPublishCalls, 0, "adapter must not run for an expired policy envelope");
 
   console.log("MirrorCraft revision-bound policy smoke passed");
 } finally {

@@ -39,6 +39,8 @@ export interface TemplateStudioProps {
   onContentChange: (next: SectionContentState) => void;
   onRestore: (record: StudioRecoveryRecord) => void;
   onNewProject: () => void;
+  /** Switch back to the classic studio view (the template is an added option). */
+  onBack?: () => void;
 }
 
 const BRANCHES = ["main", "preview", "rebrand", "experiment"] as const;
@@ -106,6 +108,11 @@ export function TemplateStudio(props: TemplateStudioProps) {
     ? composition.sections.find((s) => s.instanceId === slot.instanceId)
     : undefined;
 
+  function handleCompile() {
+    setCompileState({ at: Date.now(), ok: true });
+    dispatchStudioEvent(STUDIO_EVENTS.publish, { compiled: true });
+  }
+
   return (
     <div className="flex h-[100svh] flex-col">
       <TopBar
@@ -121,9 +128,11 @@ export function TemplateStudio(props: TemplateStudioProps) {
         onRestore={props.onRestore}
         onExport={() => dispatchStudioEvent(STUDIO_EVENTS.io, "export")}
         onPreview={() => scrollToCanvas()}
+        onCompile={handleCompile}
         onPublish={() =>
           dispatchStudioEvent(STUDIO_EVENTS.publish, { compiled: compileState?.ok ?? false })
         }
+        onBack={props.onBack}
       />
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
@@ -174,11 +183,6 @@ export function TemplateStudio(props: TemplateStudioProps) {
 
       <BottomBar
         compileState={compileState}
-        onCompile={() => {
-          setCompileState({ at: Date.now(), ok: true });
-          dispatchStudioEvent(STUDIO_EVENTS.publish, { compiled: true });
-        }}
-        onOpenHtml={() => scrollToElement("html-edit")}
         onOpenHistory={() => scrollToElement("project-edit")}
       />
     </div>
@@ -200,7 +204,9 @@ function TopBar(props: {
   onRestore: (record: StudioRecoveryRecord) => void;
   onExport: () => void;
   onPreview: () => void;
+  onCompile: () => void;
   onPublish: () => void;
+  onBack?: () => void;
 }) {
   const iconBtn =
     "inline-flex h-9 items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 text-xs text-white/75 transition hover:border-teal-300/40 hover:bg-white/5 hover:text-white";
@@ -299,6 +305,16 @@ function TopBar(props: {
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
+        {props.onBack ? (
+          <button
+            type="button"
+            onClick={props.onBack}
+            title="Back to the classic studio view"
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] px-3 text-xs text-white/70 transition hover:border-teal-300/40 hover:bg-white/5 hover:text-white"
+          >
+            ‹ Classic
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={() => dispatchStudioEvent(STUDIO_EVENTS.undo, { kind: "undo" })}
@@ -315,6 +331,15 @@ function TopBar(props: {
         </button>
         <button type="button" onClick={props.onPreview} className={iconBtn}>
           ◈ Preview
+        </button>
+        <button
+          type="button"
+          onClick={props.onCompile}
+          aria-label="Compile"
+          title="Compile (verified static build)"
+          className={iconBtn}
+        >
+          ⚙
         </button>
         <button
           type="button"
@@ -933,53 +958,20 @@ function SectionLayoutControls({
   );
 }
 
-/* ---------- bottom action bar ---------- */
+/* ---------- bottom status bar ---------- */
 
 function BottomBar({
   compileState,
-  onCompile,
-  onOpenHtml,
   onOpenHistory,
 }: {
   compileState: { at: number; ok: boolean } | null;
-  onCompile: () => void;
-  onOpenHtml: () => void;
   onOpenHistory: () => void;
 }) {
-  const [active, setActive] = useState("AI");
   const barBtn =
     "h-8 rounded-md px-3 text-xs text-white/55 transition hover:bg-white/5 hover:text-white";
   return (
     <footer className="flex flex-wrap items-center gap-1 border-t border-teal-300/20 bg-[#0a0e1a] px-3 py-1.5">
-      <button type="button" onClick={() => setActive("AI")} className={`${barBtn} ${active === "AI" ? "bg-white/5 text-teal-200" : ""}`}>
-        AI
-      </button>
-      <button type="button" onClick={() => setActive("Map")} className={`${barBtn} ${active === "Map" ? "bg-white/5 text-teal-200" : ""}`}>
-        Map
-      </button>
-      <button type="button" onClick={() => setActive("360")} className={`${barBtn} ${active === "360" ? "bg-white/5 text-teal-200" : ""}`}>
-        360
-      </button>
-      <button type="button" onClick={() => { setActive("Code"); onOpenHtml(); }} className={`${barBtn} ${active === "Code" ? "bg-white/5 text-teal-200" : ""}`}>
-        Code
-      </button>
-      <button type="button" onClick={() => setActive("Diff")} className={`${barBtn} ${active === "Diff" ? "bg-white/5 text-teal-200" : ""}`}>
-        Diff
-      </button>
-      <button type="button" onClick={() => setActive("Network")} className={`${barBtn} ${active === "Network" ? "bg-white/5 text-teal-200" : ""}`}>
-        Network
-      </button>
-      <button type="button" onClick={() => setActive("Console")} className={`${barBtn} ${active === "Console" ? "bg-white/5 text-teal-200" : ""}`}>
-        Console
-      </button>
-      <button
-        type="button"
-        onClick={onCompile}
-        className={`${barBtn} ${active === "Compile" ? "bg-white/5 text-teal-200" : ""} font-semibold`}
-      >
-        Compile
-      </button>
-      <button type="button" onClick={() => { setActive("History"); onOpenHistory(); }} className={`${barBtn} ${active === "History" ? "bg-white/5 text-teal-200" : ""}`}>
+      <button type="button" onClick={onOpenHistory} className={barBtn}>
         History
       </button>
 

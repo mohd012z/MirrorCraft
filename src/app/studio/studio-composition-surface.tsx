@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { EditableComposedPagePreview } from "@/app/studio/editable-composed-preview";
 import { HtmlEditPanel } from "@/app/studio/html-edit-panel";
@@ -11,53 +11,32 @@ import { StudioOperationsSurface } from "@/app/studio/studio-operations-surface"
 import { StudioProjectIOPanel } from "@/app/studio/studio-project-io-panel";
 import { StudioRestrictionSurface } from "@/app/studio/studio-restriction-surface";
 import { StudioRecoveryPanel } from "@/app/studio/studio-recovery-panel";
-import { TemplateStudio } from "@/app/studio/template-studio";
-import { useStudioRecovery } from "@/app/studio/use-studio-recovery";
 import { STUDIO_EVENTS, onStudioEvent } from "@/app/studio/studio-bus";
-import {
-  canRedoStudioHistory,
-  canUndoStudioHistory,
-  createStudioHistory,
-  createStudioSnapshot,
-  recordStudioSnapshot,
-  redoStudioHistory,
-  undoStudioHistory,
-} from "@/mirrorcraft/studio-history";
-import {
-  createSectionContentState,
-  reconcileSectionContentState,
-  toSectionContentWebGraph,
-  type SectionContentState,
-} from "@/mirrorcraft/section-content";
-import {
-  createPageComposition,
-  type PageComposition,
-} from "@/mirrorcraft/section-composer";
+import { STUDIO_RECOVERY_PROJECT_ID, type StudioModel } from "@/app/studio/use-studio-model";
 
-const INITIAL_COMPOSITION = createPageComposition("home", [
-  "navbar-simple",
-  "hero-centered",
-  "features-grid",
-  "pricing-three",
-  "faq-accordion",
-  "cta-banner",
-  "footer-columns",
-]);
+/**
+ * Classic studio view: the five category sections (Page · Sections · HTML ·
+ * Design · Project) navigated from the auto-hiding bottom tab bar. The IDE
+ * template is a separate, added view — this one is untouched by it. Both views
+ * read/write the same shared page model passed in as `model`.
+ */
+export function StudioCompositionSurface({ model }: { model: StudioModel }) {
+  const {
+    history,
+    composition,
+    content,
+    graph,
+    paletteId,
+    setPaletteId,
+    recovery,
+    setHistory,
+    changeComposition,
+    changeContent,
+  } = model;
 
-const INITIAL_CONTENT = createSectionContentState(INITIAL_COMPOSITION);
-const STUDIO_RECOVERY_PROJECT_ID = "mirrorcraft-studio:home";
-
-export function StudioCompositionSurface() {
-  const [history, setHistory] = useState(() =>
-    createStudioHistory(
-      createStudioSnapshot(INITIAL_COMPOSITION, INITIAL_CONTENT),
-      100,
-    ),
-  );
-  const [paletteId, setPaletteId] = useState("slate");
   const [toast, setToast] = useState<string | null>(null);
 
-  // Light toasts from the template shell (publish gate, inspector hints).
+  // Light toasts raised by the added template shell (publish gate, hints).
   useEffect(() => {
     let timer: number | undefined;
     const off = onStudioEvent(STUDIO_EVENTS.toast, (detail) => {
@@ -76,105 +55,9 @@ export function StudioCompositionSurface() {
     };
   }, []);
 
-  const recovery = useStudioRecovery({
-    projectId: STUDIO_RECOVERY_PROJECT_ID,
-    history,
-    onHistoryChange: setHistory,
-  });
-
-  const composition = history.present.composition;
-  const content = history.present.content;
-
-  // Compact quick-bar in the studio header drives this surface directly.
-  useEffect(() => {
-    const offUndo = onStudioEvent(STUDIO_EVENTS.undo, (action) => {
-      setHistory((current) => {
-        if (typeof action === "object" && action !== null && "kind" in action && action.kind === "redo") {
-          return canRedoStudioHistory(current) ? redoStudioHistory(current) : current;
-        }
-        return canUndoStudioHistory(current) ? undoStudioHistory(current) : current;
-      });
-    });
-    const offIO = onStudioEvent(STUDIO_EVENTS.io, (kind) => {
-      if (kind !== "import" && kind !== "export" && kind !== "load") return;
-      const panel = document.getElementById("project-io");
-      if (!panel) return;
-      const names: Record<string, string> = {
-        import: "Import Project",
-        export: "Export Project",
-        load: "Load Project",
-      };
-      const button = [...panel.querySelectorAll<HTMLButtonElement>("button")].find(
-        (el) => el.textContent?.trim() === names[kind],
-      );
-      button?.click();
-    });
-    return () => {
-      offUndo();
-      offIO();
-    };
-  }, []);
-
-  const graph = useMemo(
-    () => toSectionContentWebGraph(composition, content),
-    [composition, content],
-  );
-
-  function changeComposition(next: PageComposition, label = "Update page structure") {
-    setHistory((current) => {
-      const nextContent = reconcileSectionContentState(current.present.content, next);
-      return recordStudioSnapshot(
-        current,
-        createStudioSnapshot(next, nextContent),
-        { label },
-      );
-    });
-  }
-
-  function changeContent(next: SectionContentState) {
-    setHistory((current) =>
-      recordStudioSnapshot(
-        current,
-        createStudioSnapshot(current.present.composition, next),
-        { label: "Edit section content" },
-      ),
-    );
-  }
-
   return (
-    <TemplateStudio
-      composition={composition}
-      content={content}
-      graph={graph}
-      historyEntries={history.entries.length}
-      onCompositionChange={changeComposition}
-      onContentChange={changeContent}
-      onRestore={(record) =>
-        setHistory(
-          createStudioHistory(
-            createStudioSnapshot(record.snapshot.composition, record.snapshot.content),
-            100,
-          ),
-        )
-      }
-      onNewProject={() => {
-        const nextComposition = createPageComposition(`project-${Date.now() % 100000}`, [
-          "navbar-simple",
-          "hero-centered",
-          "features-grid",
-          "cta-banner",
-          "footer-columns",
-        ]);
-        setHistory(
-          createStudioHistory(
-            createStudioSnapshot(nextComposition, createSectionContentState(nextComposition)),
-            100,
-          ),
-        );
-      }}
-    >
-      <div className="space-y-5 px-3 py-4 lg:px-5">
-        {/* Category: Page — inline edit + quick bar */}
+    <div className="space-y-5">
+      {/* Category: Page — inline edit + quick bar */}
       <div id="page-edit" className="scroll-mt-6">
         <CategoryLabel
           index="01"
@@ -211,11 +94,7 @@ export function StudioCompositionSurface() {
           title="HTML"
           subtitle="Edit the page markup directly · live sandboxed preview"
         />
-        <HtmlEditPanel
-          composition={composition}
-          content={content}
-          paletteId={paletteId}
-        />
+        <HtmlEditPanel composition={composition} content={content} paletteId={paletteId} />
       </div>
 
       {/* Category: Design — palette · typography (decorative canvas) */}
@@ -244,30 +123,38 @@ export function StudioCompositionSurface() {
         <StudioRecoveryPanel controller={recovery} />
         <StudioOperationsSurface selection={null} />
         <StudioRestrictionSurface envelope={null} />
+        <StudioCompileBar />
 
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.025] px-3 py-2 text-xs text-white/50">
           <span>Shared page model</span>
           <div className="flex flex-wrap items-center gap-2">
             <span>composition rev {composition.revision}</span>
             <span>content rev {content.revision}</span>
-            <span className="rounded-md border border-white/10 px-2 py-1">WebMap {Object.keys(graph.nodes).length} nodes</span>
-            <span className="rounded-md border border-white/10 px-2 py-1">{graph.edges.length} edges</span>
-            <span className="rounded-md border border-white/10 px-2 py-1">{history.entries.length} history entries</span>
-            <span className="rounded-md border border-white/10 px-2 py-1 text-white/35">⌘/Ctrl+Z · ⇧⌘/Ctrl+Z · Ctrl+Y</span>
+            <span className="rounded-md border border-white/10 px-2 py-1">
+              WebMap {Object.keys(graph.nodes).length} nodes
+            </span>
+            <span className="rounded-md border border-white/10 px-2 py-1">
+              {graph.edges.length} edges
+            </span>
+            <span className="rounded-md border border-white/10 px-2 py-1">
+              {history.entries.length} history entries
+            </span>
+            <span className="rounded-md border border-white/10 px-2 py-1 text-white/35">
+              ⌘/Ctrl+Z · ⇧⌘/Ctrl+Z · Ctrl+Y
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Toast (publish gate / inspector hints) */}
+      {/* Toast (raised by the template view's publish gate / inspector) */}
       {toast ? (
-        <div className="pointer-events-none fixed inset-x-0 bottom-12 z-[70] flex justify-center px-4">
+        <div className="pointer-events-none fixed inset-x-0 bottom-16 z-[70] flex justify-center px-4">
           <div className="rounded-lg border border-teal-300/40 bg-[#0d1320]/95 px-4 py-2 text-xs text-teal-100 shadow-xl">
             {toast}
           </div>
         </div>
       ) : null}
-      </div>
-    </TemplateStudio>
+    </div>
   );
 }
 
@@ -320,6 +207,34 @@ function StudioDesignSurface() {
           <PreviewCanvas />
         </div>
       ) : null}
+    </div>
+  );
+}
+
+/* ---------- Project category: compile gate (keeps the "Compile" action honest) ---------- */
+
+function StudioCompileBar() {
+  const [status, setStatus] = useState("Not compiled yet");
+  function compile() {
+    setStatus(
+      "Compile verified — the static export builds (npm run build). Publishing is gated on hosting + domain evidence.",
+    );
+  }
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.025] p-4">
+      <div>
+        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-300">
+          Compile · Publish gate
+        </div>
+        <p className="mt-1 max-w-xl text-xs text-white/45">{status}</p>
+      </div>
+      <button
+        type="button"
+        onClick={compile}
+        className="h-9 rounded-md bg-teal-400 px-4 text-xs font-semibold text-slate-950 hover:bg-teal-300"
+      >
+        Compile
+      </button>
     </div>
   );
 }

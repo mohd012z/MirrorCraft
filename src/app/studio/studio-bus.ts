@@ -16,6 +16,7 @@ export const STUDIO_EVENTS = {
   expandDesign: "mirrorcraft:studio-expand-design",
   publish: "mirrorcraft:studio-publish", // detail: { compiled: boolean }
   toast: "mirrorcraft:studio-toast", // detail: { message: string }
+  view: "mirrorcraft:studio-view", // detail: "classic" | "template"
 } as const;
 
 export function dispatchStudioEvent(

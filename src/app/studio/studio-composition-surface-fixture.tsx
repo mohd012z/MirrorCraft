@@ -1,5 +1,9 @@
+"use client";
+
 import { StudioCompositionSurface } from "@/app/studio/studio-composition-surface";
+import { useStudioModel } from "@/app/studio/use-studio-model";
 
-const fixture = <StudioCompositionSurface />;
-
-void fixture;
+export function StudioCompositionSurfaceFixture() {
+  const model = useStudioModel();
+  return <StudioCompositionSurface model={model} />;
+}

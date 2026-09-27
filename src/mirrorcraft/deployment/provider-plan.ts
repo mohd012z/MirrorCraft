@@ -6,7 +6,9 @@ import {
   hostingProviderToDeploymentTarget,
   type DeploymentTarget,
 } from "@/mirrorcraft/deployment/targets";
+import type { DomainPlan } from "@/mirrorcraft/domain/types";
 import type { CloudflareDeploymentPlan } from "@/mirrorcraft/integrations/cloudflare";
+import type { IntegrationConnectionSummary } from "@/mirrorcraft/integrations/connections";
 import type { GitHubDeploymentPlan } from "@/mirrorcraft/integrations/github";
 import {
   GOOGLE_SERVICE_CATALOG,
@@ -53,6 +55,8 @@ export interface DeploymentExecutionSelection {
 export interface BuildDeploymentRequestOptions {
   repository?: string;
   branch?: string;
+  connection?: IntegrationConnectionSummary;
+  domainPlan?: DomainPlan;
   restrictions?: RestrictionDecision;
 }
 
@@ -176,6 +180,8 @@ export function buildDeploymentRequest(
     ...(options.branch ? { branch: options.branch } : {}),
     ...(selection.customDomain ? { customDomain: selection.customDomain } : {}),
     provider,
+    ...(options.connection ? { connection: options.connection } : {}),
+    ...(options.domainPlan ? { domainPlan: options.domainPlan } : {}),
     ...(options.restrictions ? { restrictions: options.restrictions } : {}),
   };
 }

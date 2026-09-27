@@ -1,5 +1,8 @@
 import type { DeploymentTarget } from "@/mirrorcraft/deployment/targets";
+import type { DomainPlan } from "@/mirrorcraft/domain/types";
+import type { IntegrationConnectionSummary } from "@/mirrorcraft/integrations/connections";
 import type { IntegrationRuntime } from "@/mirrorcraft/integrations/types";
+import { restrictionsFromDeploymentContext } from "@/mirrorcraft/policy/deployment-context";
 import {
   combineRestrictionDecisions,
   restrictionsFromDeploymentExecution,
@@ -29,7 +32,11 @@ export interface DeploymentRequest {
   customDomain?: string;
   /** Non-secret provider routing metadata. Credentials remain behind connector/SecretRef boundaries. */
   provider?: DeploymentProviderExecution;
-  /** Precomputed policy restrictions from access/hosting/domain planning. Router also derives publish readiness itself. */
+  /** Non-secret connection health/capability summary used to fail closed before execution. */
+  connection?: IntegrationConnectionSummary;
+  /** Domain planning/verification metadata. No registrar credentials belong here. */
+  domainPlan?: DomainPlan;
+  /** Precomputed policy restrictions from access/hosting/domain planning. Router derives execution and publish readiness independently. */
   restrictions?: RestrictionDecision;
 }
 
@@ -57,9 +64,26 @@ export class DeploymentRouter {
   }
 
   async publish(request: DeploymentRequest): Promise<DeploymentResult> {
+    const adapter = this.adapters.get(request.target);
+    if (!adapter) {
+      return {
+        target: request.target,
+        status: "blocked",
+        revision: request.manifest.revision,
+        evidence: [],
+        errors: [`No deployment adapter registered for ${request.target}.`],
+      };
+    }
+
     const executionRestrictions = restrictionsFromDeploymentExecution({
       target: request.target,
       ...(request.provider ? { provider: request.provider } : {}),
+    });
+    const contextRestrictions = restrictionsFromDeploymentContext({
+      ...(request.provider ? { provider: request.provider } : {}),
+      ...(request.connection ? { connection: request.connection } : {}),
+      ...(request.customDomain ? { customDomain: request.customDomain } : {}),
+      ...(request.domainPlan ? { domainPlan: request.domainPlan } : {}),
     });
     const publishRestrictions = restrictionsFromPublishDecision(
       evaluatePublish(request.manifest),
@@ -67,11 +91,13 @@ export class DeploymentRouter {
     const restrictionDecision = request.restrictions
       ? combineRestrictionDecisions(
           executionRestrictions,
+          contextRestrictions,
           publishRestrictions,
           request.restrictions,
         )
       : combineRestrictionDecisions(
           executionRestrictions,
+          contextRestrictions,
           publishRestrictions,
         );
 
@@ -88,17 +114,6 @@ export class DeploymentRouter {
         errors: restrictionDecision.blockers.map(
           (restriction) => restriction.message,
         ),
-      };
-    }
-
-    const adapter = this.adapters.get(request.target);
-    if (!adapter) {
-      return {
-        target: request.target,
-        status: "blocked",
-        revision: request.manifest.revision,
-        evidence: [],
-        errors: [`No deployment adapter registered for ${request.target}.`],
       };
     }
 

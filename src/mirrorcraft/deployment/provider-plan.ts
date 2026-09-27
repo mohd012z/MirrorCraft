@@ -16,6 +16,7 @@ import {
 import type { NetlifyDeploymentPlan } from "@/mirrorcraft/integrations/netlify";
 import type { IntegrationRuntime } from "@/mirrorcraft/integrations/types";
 import type { VercelDeploymentPlan } from "@/mirrorcraft/integrations/vercel";
+import type { RestrictionDecision } from "@/mirrorcraft/policy/restrictions";
 import type { ReleaseManifest } from "@/mirrorcraft/release-manifest";
 
 export type DirectHostingDeploymentPlan =
@@ -52,6 +53,7 @@ export interface DeploymentExecutionSelection {
 export interface BuildDeploymentRequestOptions {
   repository?: string;
   branch?: string;
+  restrictions?: RestrictionDecision;
 }
 
 function directProviderTarget(
@@ -174,5 +176,6 @@ export function buildDeploymentRequest(
     ...(options.branch ? { branch: options.branch } : {}),
     ...(selection.customDomain ? { customDomain: selection.customDomain } : {}),
     provider,
+    ...(options.restrictions ? { restrictions: options.restrictions } : {}),
   };
 }

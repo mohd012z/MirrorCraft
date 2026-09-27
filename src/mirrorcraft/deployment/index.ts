@@ -1,5 +1,10 @@
 import type { DeploymentTarget } from "@/mirrorcraft/deployment/targets";
 import type { IntegrationRuntime } from "@/mirrorcraft/integrations/types";
+import {
+  combineRestrictionDecisions,
+  restrictionsFromDeploymentExecution,
+  type RestrictionDecision,
+} from "@/mirrorcraft/policy/restrictions";
 import type { ReleaseManifest } from "@/mirrorcraft/release-manifest";
 
 export type { DeploymentTarget } from "@/mirrorcraft/deployment/targets";
@@ -22,6 +27,8 @@ export interface DeploymentRequest {
   customDomain?: string;
   /** Non-secret provider routing metadata. Credentials remain behind connector/SecretRef boundaries. */
   provider?: DeploymentProviderExecution;
+  /** Precomputed policy restrictions from access/hosting/publish planning. Router re-checks execution consistency independently. */
+  restrictions?: RestrictionDecision;
 }
 
 export interface DeploymentResult {
@@ -48,6 +55,30 @@ export class DeploymentRouter {
   }
 
   async publish(request: DeploymentRequest): Promise<DeploymentResult> {
+    const executionRestrictions = restrictionsFromDeploymentExecution({
+      target: request.target,
+      ...(request.provider ? { provider: request.provider } : {}),
+    });
+    const restrictionDecision = request.restrictions
+      ? combineRestrictionDecisions(executionRestrictions, request.restrictions)
+      : executionRestrictions;
+
+    if (!restrictionDecision.allowed) {
+      return {
+        target: request.target,
+        status: "blocked",
+        revision: request.manifest.revision,
+        evidence: [
+          ...new Set(
+            restrictionDecision.blockers.flatMap((restriction) => restriction.evidence),
+          ),
+        ],
+        errors: restrictionDecision.blockers.map(
+          (restriction) => restriction.message,
+        ),
+      };
+    }
+
     const adapter = this.adapters.get(request.target);
     if (!adapter) {
       return {

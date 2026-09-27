@@ -23,11 +23,11 @@ const ibmPlexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "MirrorCraft — AI website cloner for Cursor & Claude",
   description:
-    "Point an AI coding agent at any URL. Extract design tokens, assets, and specs — rebuild a pixel-faithful Next.js site in parallel.",
+    "Turn any permitted website into a clean, editable Next.js codebase — extracted design tokens, real assets, and section specs that AI agents rebuild in parallel.",
   openGraph: {
     title: "MirrorCraft",
     description:
-      "Forge any website into a clean Next.js codebase with Cursor, Claude Code, and other AI agents.",
+      "MirrorCraft — AI-assisted website reconstruction: extract tokens and assets, rebuild pixel-faithful Next.js sites with Cursor, Claude Code, and other agents.",
     type: "website",
   },
 };

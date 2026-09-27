@@ -2,7 +2,7 @@
   "name": "mirrorcraft",
   "version": "1.0.0",
   "private": true,
-  "description": "Reconstruct permitted websites into clean, editable Next.js apps with AI-assisted browser analysis",
+  "description": "MirrorCraft — AI-assisted website reconstruction: extract design tokens, assets and specs from permitted sites, rebuild pixel-faithful Next.js codebases in parallel with AI agents.",
   "author": "mohd012z",
   "license": "MIT",
   "repository": {

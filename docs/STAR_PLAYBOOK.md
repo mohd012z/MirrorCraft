@@ -22,7 +22,7 @@ Practical ways to get discovery without spam. Stars follow demos + usefulness.
 
 ## Posting checklist
 
-- [ ] Link to https://github.com/abuzar310/mirrorcraft
+- [ ] Link to https://github.com/mohd012z/MirrorCraft
 - [ ] Mention MIT + upstream credit (builds goodwill)
 - [ ] Include Node 20+ (low friction)
 - [ ] Ask for stars only after value (“if this saves you a weekend…”)

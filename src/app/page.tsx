@@ -11,7 +11,7 @@ export default function Home() {
       <header className="relative mx-auto flex min-h-[100svh] w-full max-w-6xl flex-col px-6 pb-16 pt-8 md:px-10">
         <nav className="cf-rise flex items-center justify-between gap-4">
           <span className="cf-display text-lg font-semibold tracking-tight text-slag md:text-xl">
-            Clone<span className="text-ember">Forge</span>
+            <span className="text-ember">Mirror</span>Craft
           </span>
           <div className="flex items-center gap-3 text-sm text-iron">
             <Link
@@ -38,8 +38,8 @@ export default function Home() {
         <div className="mt-auto grid flex-1 items-center gap-12 py-16 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8 lg:py-10">
           <div>
             <p className="cf-rise cf-rise-delay-1 cf-display text-5xl font-extrabold leading-[0.95] text-slag sm:text-6xl md:text-7xl lg:text-[5.25rem]">
-              Clone
-              <span className="text-ember">Forge</span>
+              Mirror
+              <span className="text-ember">Craft</span>
             </p>
             <h1 className="cf-rise cf-rise-delay-2 mt-6 max-w-xl text-xl font-medium leading-snug text-slag/95 sm:text-2xl">
               Turn any live page into a clean Next.js codebase.
@@ -79,7 +79,7 @@ export default function Home() {
                 <span className="size-2.5 rounded-full bg-iron/40" />
                 <span className="size-2.5 rounded-full bg-ember/80 cf-ember-glow" />
                 <span className="ml-2 font-mono text-[11px] text-iron">
-                  forge://pipeline
+                  mirrorcraft://pipeline
                 </span>
               </div>
               <div className="relative space-y-3 p-5 font-mono text-[12px] leading-relaxed sm:text-[13px]">
@@ -183,7 +183,7 @@ export default function Home() {
           <div className="mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-border pt-8 text-sm text-iron">
             <p>
               <span className="cf-display font-semibold text-slag">
-                Clone<span className="text-ember">Forge</span>
+                <span className="text-ember">Mirror</span>Craft
               </span>
               <span className="mx-2">·</span>
               MIT · inspired by{" "}

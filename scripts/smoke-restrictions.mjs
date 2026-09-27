@@ -198,6 +198,21 @@ try {
     artifacts: [],
   };
 
+  const unreadyManifest = {
+    ...manifest,
+    revision: "rev-unready",
+    stage: "verified",
+    verification: [
+      {
+        id: "build",
+        label: "Build",
+        required: true,
+        status: "failed",
+        evidence: ["fixture failure"],
+      },
+    ],
+  };
+
   let publishCalls = 0;
   const router = new deployment.DeploymentRouter();
   router.register({
@@ -242,6 +257,20 @@ try {
   });
   assert.equal(missingProvider.status, "blocked");
   assert.equal(publishCalls, 0);
+
+  const unready = await router.publish({
+    target: "github-pages",
+    manifest: unreadyManifest,
+    artifactPath: "out",
+    provider,
+  });
+  assert.equal(unready.status, "blocked");
+  assert.equal(publishCalls, 0);
+  assert.ok(
+    unready.errors.some((message) =>
+      message.includes("fully verified ready state"),
+    ),
+  );
 
   const published = await router.publish({
     target: "github-pages",

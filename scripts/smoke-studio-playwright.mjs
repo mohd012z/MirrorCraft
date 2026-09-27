@@ -52,6 +52,9 @@ try {
 
   assert.equal(await page.getByRole("heading", { name: "Editing Studio" }).isVisible(), true);
 
+  const projectIO = page.locator("section#project-io");
+  assert.equal(await projectIO.isVisible(), true, "Expected Project I/O panel to be mounted");
+
   const composed = page.locator("section.rounded-2xl").filter({
     has: page.getByText("Editable Composed Preview", { exact: true }),
   }).first();
@@ -61,6 +64,14 @@ try {
   const before = (await editable.textContent())?.trim() ?? "";
   assert.ok(before.length > 0, "Expected editable composed content");
 
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    projectIO.getByRole("button", { name: "Export Project", exact: true }).click(),
+  ]);
+  assert.match(download.suggestedFilename(), /\.mirrorcraft\.json$/);
+  const exportedPath = await download.path();
+  assert.ok(exportedPath, "Expected exported MirrorCraft bundle path");
+
   const editedText = `Playwright Studio Edit ${process.pid}`;
   await editable.click();
   const directInput = composed.locator("input").last();
@@ -68,6 +79,20 @@ try {
   await directInput.fill(editedText);
   await composed.getByRole("button", { name: "Apply", exact: true }).click();
   assert.equal((await editable.textContent())?.trim(), editedText);
+
+  const [fileChooser] = await Promise.all([
+    page.waitForEvent("filechooser"),
+    projectIO.getByRole("button", { name: "Import Project", exact: true }).click(),
+  ]);
+  await fileChooser.setFiles(exportedPath);
+  await projectIO.getByText(/Imported project/).waitFor({ state: "visible" });
+  assert.equal((await editable.textContent())?.trim(), before);
+
+  const secondEdit = `${editedText} Undo`;
+  await editable.click();
+  await composed.locator("input").last().fill(secondEdit);
+  await composed.getByRole("button", { name: "Apply", exact: true }).click();
+  assert.equal((await editable.textContent())?.trim(), secondEdit);
 
   const undo = page.getByRole("button", { name: /Undo/ }).first();
   assert.equal(await undo.isEnabled(), true);

@@ -14,16 +14,16 @@ export default function StudioPage() {
             <h1 className="mt-1 text-xl font-semibold tracking-tight">Editing Studio</h1>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-sm">
-            <button type="button" className="rounded-lg border border-white/10 px-3 py-2 text-white/80">
+            <button type="button" className="h-9 rounded-lg border border-white/10 px-3 text-white/80">
               Import
             </button>
-            <button type="button" className="rounded-lg border border-white/10 px-3 py-2 text-white/80">
+            <button type="button" className="h-9 rounded-lg border border-white/10 px-3 text-white/80">
               Export
             </button>
-            <button type="button" className="rounded-lg border border-white/10 px-3 py-2 text-white/80">
+            <button type="button" className="h-9 rounded-lg border border-white/10 px-3 text-white/80">
               Load
             </button>
-            <Link href="/" className="rounded-lg bg-white px-3 py-2 font-semibold text-slate-950">
+            <Link href="/" className="inline-flex h-9 items-center rounded-lg bg-white px-3 font-semibold text-slate-950">
               Home
             </Link>
           </div>

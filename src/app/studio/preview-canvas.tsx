@@ -340,7 +340,7 @@ function ControlSelect({ label, value, options, onChange }: { label: string; val
   return (
     <label className="rounded-xl border border-white/10 bg-white/[0.03] p-2.5">
       <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.16em] text-white/40">{label}</span>
-      <select value={value} onChange={(event) => onChange(event.target.value)} className="w-full bg-transparent text-sm text-white outline-none">
+      <select value={value} onChange={(event) => onChange(event.target.value)} className="h-10 w-full cursor-pointer bg-transparent text-sm text-white outline-none">
         {options.map((option) => <option key={option.value} value={option.value} className="bg-slate-950 text-white">{option.label}</option>)}
       </select>
     </label>

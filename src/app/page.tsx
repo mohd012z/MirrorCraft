@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-const REPO = "https://github.com/abuzar310/mirrorcraft";
+const REPO = "https://github.com/mohd012z/MirrorCraft";
 
 export default function Home() {
   return (
@@ -28,7 +28,7 @@ export default function Home() {
             </Link>
             <Link
               href={REPO}
-              className="rounded-md border border-border bg-secondary/60 px-3 py-1.5 text-slag transition-colors hover:border-ember/40 hover:text-spark"
+              className="inline-flex h-9 items-center rounded-md border border-border bg-secondary/60 px-3 text-slag transition-colors hover:border-ember/40 hover:text-spark"
             >
               GitHub
             </Link>

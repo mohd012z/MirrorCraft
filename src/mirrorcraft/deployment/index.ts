@@ -53,7 +53,7 @@ export interface DeploymentRequest {
   connection?: IntegrationConnectionSummary;
   /** Domain planning/verification metadata. No registrar credentials belong here. */
   domainPlan?: DomainPlan;
-  /** Revision-bound, non-secret policy snapshot. Router rejects snapshots from another project/revision/commit. */
+  /** Revision-bound, non-secret policy snapshot. Router rejects missing snapshots and snapshots from another project/revision/commit before execution. */
   policyEnvelope?: DeploymentPolicyEnvelope;
   /** Precomputed policy restrictions from access/hosting/domain planning. Router derives execution and publish readiness independently. */
   restrictions?: RestrictionDecision;
@@ -173,6 +173,22 @@ export class DeploymentRouter {
         errors: restrictionDecision.blockers.map(
           (restriction) => restriction.message,
         ),
+      };
+    }
+
+    if (!request.policyEnvelope) {
+      return {
+        target: request.target,
+        status: "blocked",
+        revision: request.manifest.revision,
+        evidence: [
+          `release-project:${request.manifest.projectId}`,
+          `release-revision:${request.manifest.revision}`,
+          `release-commit:${request.manifest.commit}`,
+        ],
+        errors: [
+          "Deployment execution requires a revision-bound policy envelope for the current release manifest.",
+        ],
       };
     }
 

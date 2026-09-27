@@ -105,6 +105,7 @@ try {
   const github = await loadModule("src/mirrorcraft/integrations/github.ts");
   const google = await loadModule("src/mirrorcraft/integrations/google.ts");
   const secrets = await loadModule("src/mirrorcraft/integrations/secrets.ts");
+  const revisionPolicy = await loadModule("src/mirrorcraft/policy/revision-envelope.ts");
 
   const secretRef = secrets.createSecretRef({
     provider: "github",
@@ -137,16 +138,56 @@ try {
     warnings: [],
     artifacts: [],
   };
+  const assessmentKinds = [
+    "access",
+    "hosting",
+    "security",
+    "runtime",
+    "integration",
+    "domain",
+    "publish",
+  ];
+  const assessments = Object.fromEntries(
+    assessmentKinds.map((kind) => [
+      kind,
+      {
+        status: kind === "domain" ? "not-applicable" : "pass",
+        evaluatedAt: "2026-09-27T00:00:00.000Z",
+        evidence: [`provider-fixture:${kind}`],
+      },
+    ]),
+  );
+  const policyEnvelope = await revisionPolicy.createRevisionPolicyEnvelope({
+    snapshotId: "provider-policy-rev-1",
+    manifest,
+    createdAt: "2026-09-27T00:00:00.000Z",
+    assessments,
+    decision: {
+      allowed: true,
+      blockers: [],
+      warnings: [],
+      restrictions: [],
+    },
+  });
   const request = bridge.buildDeploymentRequest(
     selection,
     manifest,
     "out",
-    { repository: "mohd012z/MirrorCraft", branch: "main" },
+    {
+      repository: "mohd012z/MirrorCraft",
+      branch: "main",
+      policyEnvelope,
+    },
   );
   const serializedRequest = JSON.stringify(request);
   assert.ok(!serializedRequest.includes("deployment-token"));
   assert.ok(!serializedRequest.includes("secretId"));
   assert.equal(request.provider.providerId, "github");
+  assert.equal(
+    request.policyEnvelope?.snapshotId,
+    "provider-policy-rev-1",
+    "deployment request builder must preserve the revision policy envelope",
+  );
 
   const router = new deployment.DeploymentRouter();
   const blocked = await router.publish(request);

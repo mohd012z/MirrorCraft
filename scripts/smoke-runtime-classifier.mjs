@@ -59,6 +59,14 @@ const nestedRoute = classify([
 assert.equal(nestedRoute.analysis.apiRoutes, 1);
 assert.equal(nestedRoute.recommendation.profile, "server-runtime");
 assert.equal(nestedRoute.runtime, "serverless");
+assert.ok(nestedRoute.recommendation.compatibleTargets.includes("vercel"));
+assert.ok(nestedRoute.recommendation.compatibleTargets.includes("netlify"));
+assert.ok(nestedRoute.recommendation.compatibleTargets.includes("google-cloud-run"));
+assert.ok(
+  nestedRoute.recommendation.incompatibleTargets.some(
+    (entry) => entry.target === "github-pages",
+  ),
+);
 
 const browserSupabase = classify([
   {
@@ -70,6 +78,20 @@ const browserSupabase = classify([
 assert.equal(browserSupabase.analysis.privateDatabaseRuntime, false);
 assert.equal(browserSupabase.recommendation.profile, "static-export");
 assert.equal(browserSupabase.runtime, "static");
+for (const target of [
+  "github-pages",
+  "cloudflare-pages",
+  "vercel",
+  "netlify",
+  "firebase-hosting",
+  "static-host",
+  "artifact",
+]) {
+  assert.ok(
+    browserSupabase.recommendation.compatibleTargets.includes(target),
+    `Expected static deployment compatibility for ${target}`,
+  );
+}
 
 const readOnlyFilesystem = classify([
   {
@@ -90,6 +112,10 @@ assert.ok(
 );
 assert.equal(readOnlyFilesystem.recommendation.profile, "server-runtime");
 assert.equal(readOnlyFilesystem.runtime, "serverless");
+assert.ok(readOnlyFilesystem.recommendation.compatibleTargets.includes("netlify"));
+assert.ok(
+  readOnlyFilesystem.recommendation.compatibleTargets.includes("google-cloud-run"),
+);
 
 const writableFilesystem = classify([
   {
@@ -101,6 +127,9 @@ const writableFilesystem = classify([
 assert.equal(writableFilesystem.analysis.writableFilesystemRuntime, true);
 assert.equal(writableFilesystem.recommendation.profile, "server-runtime");
 assert.equal(writableFilesystem.runtime, "server");
+assert.ok(writableFilesystem.recommendation.compatibleTargets.includes("node"));
+assert.ok(writableFilesystem.recommendation.compatibleTargets.includes("container"));
+assert.ok(!writableFilesystem.recommendation.compatibleTargets.includes("netlify"));
 
 assert.equal(
   deploymentTargets.hostingProviderToDeploymentTarget("github-pages", "static"),

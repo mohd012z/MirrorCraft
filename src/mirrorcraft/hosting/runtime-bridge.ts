@@ -35,7 +35,7 @@ export function deriveHostingRuntime(
 export function deriveHostingRuntime(
   recommendation: DeploymentRecommendation & { profile: "server-runtime" | "hybrid" },
   analysis: SourceRuntimeAnalysis & {
-    edgeRuntime: false;
+    edgeRuntime?: false;
     websocketServer: false;
     writableFilesystemRuntime: false;
   },

@@ -20,8 +20,13 @@ export interface DeploymentAnalysisInput {
   apiRoutes: number;
   serverActions: number;
   requestTimeSsr: boolean;
-  /** Explicit `export const runtime = "edge"` evidence from source scanning. */
+  /** Explicit/inherited Edge runtime evidence from source scanning. */
   edgeRuntime?: boolean;
+  edgeRuntimeFiles?: number;
+  nodeRuntimeFiles?: number;
+  mixedRuntime?: boolean;
+  cacheComponents?: boolean;
+  runtimeConflicts?: string[];
   websocketServer: boolean;
   privateDatabaseRuntime: boolean;
   writableFilesystemRuntime: boolean;
@@ -59,6 +64,14 @@ const EDGE_COMPATIBLE_TARGETS: readonly DeploymentTarget[] = [
   "local",
 ];
 
+const MIXED_RUNTIME_COMPATIBLE_TARGETS: readonly DeploymentTarget[] = [
+  "github-artifact",
+  "vercel",
+  "netlify",
+  "artifact",
+  "local",
+];
+
 const SERVERLESS_COMPATIBLE_TARGETS: readonly DeploymentTarget[] = [
   "github-artifact",
   "vercel",
@@ -78,8 +91,42 @@ const DEDICATED_SERVER_COMPATIBLE_TARGETS: readonly DeploymentTarget[] = [
   "local",
 ];
 
+const ARTIFACT_ONLY_TARGETS: readonly DeploymentTarget[] = [
+  "github-artifact",
+  "artifact",
+];
+
+const DEPLOYABLE_RUNTIME_TARGETS: readonly DeploymentTarget[] = [
+  "github-pages",
+  "cloudflare-pages",
+  "vercel",
+  "netlify",
+  "firebase-hosting",
+  "google-cloud-run",
+  "node",
+  "container",
+  "static-host",
+  "local",
+];
+
 function copyTargets(targets: readonly DeploymentTarget[]): DeploymentTarget[] {
   return [...targets];
+}
+
+function incompatibleTargets(
+  targets: readonly DeploymentTarget[],
+  reasons: string[],
+): Array<{ target: DeploymentTarget; reasons: string[] }> {
+  return targets.map((target) => ({ target, reasons: [...reasons] }));
+}
+
+function runtimeConflictReasons(conflicts: readonly string[]): string[] {
+  return conflicts.map((conflict) => {
+    if (conflict === "cache-components-edge-runtime") {
+      return "Runtime conflict: Next.js Cache Components do not support the Edge runtime.";
+    }
+    return `Runtime conflict: ${conflict}.`;
+  });
 }
 
 export function classifyDeployment(
@@ -89,19 +136,34 @@ export function classifyDeployment(
     { id: "api-routes", required: input.apiRoutes > 0, evidence: [`${input.apiRoutes} API route(s)`] },
     { id: "server-actions", required: input.serverActions > 0, evidence: [`${input.serverActions} server action(s)`] },
     { id: "request-time-ssr", required: input.requestTimeSsr, evidence: input.requestTimeSsr ? ["request-time SSR detected"] : [] },
-    { id: "edge-runtime", required: input.edgeRuntime === true, evidence: input.edgeRuntime ? ["explicit Edge runtime requested"] : [] },
+    { id: "edge-runtime", required: input.edgeRuntime === true, evidence: input.edgeRuntime ? [`${input.edgeRuntimeFiles ?? 1} Edge runtime route(s)`] : [] },
+    { id: "mixed-runtime", required: input.mixedRuntime === true, evidence: input.mixedRuntime ? [`mixed Edge/Node runtime topology detected (${input.edgeRuntimeFiles ?? 0} Edge, ${input.nodeRuntimeFiles ?? 0} Node)`] : [] },
     { id: "websocket-server", required: input.websocketServer, evidence: input.websocketServer ? ["WebSocket server runtime detected"] : [] },
     { id: "private-database", required: input.privateDatabaseRuntime, evidence: input.privateDatabaseRuntime ? ["private database access requires server runtime"] : [] },
     { id: "writable-filesystem", required: input.writableFilesystemRuntime, evidence: input.writableFilesystemRuntime ? ["writable filesystem required at runtime"] : [] },
     { id: "server-auth", required: input.authRequiresServer, evidence: input.authRequiresServer ? ["authentication depends on server-side execution"] : [] },
   ];
 
+  const explicitConflicts = input.runtimeConflicts ?? [];
+  if (explicitConflicts.length > 0) {
+    const reasons = runtimeConflictReasons(explicitConflicts);
+    return {
+      profile: "artifact-only",
+      compatibleTargets: copyTargets(ARTIFACT_ONLY_TARGETS),
+      incompatibleTargets: incompatibleTargets(DEPLOYABLE_RUNTIME_TARGETS, reasons),
+      requirements: serverRequirements,
+      confidence: 0.99,
+      reasons,
+    };
+  }
+
   const requiredServer = serverRequirements.filter((requirement) => requirement.required);
   const unsupported = input.unsupportedStaticFeatures ?? [];
   const staticSafe =
     requiredServer.length === 0 &&
     unsupported.length === 0 &&
-    input.edgeRuntime !== true;
+    input.edgeRuntime !== true &&
+    input.mixedRuntime !== true;
 
   if (staticSafe) {
     return {
@@ -124,21 +186,64 @@ export function classifyDeployment(
   const requiresDedicatedServer =
     input.websocketServer || input.writableFilesystemRuntime;
 
+  if (input.mixedRuntime === true && requiresDedicatedServer) {
+    const conflictReasons = [
+      ...reasons,
+      "Mixed Edge/Node runtime topology also requires dedicated-server semantics; no single modeled hosting runtime safely satisfies both requirements.",
+    ];
+    return {
+      profile: "artifact-only",
+      compatibleTargets: copyTargets(ARTIFACT_ONLY_TARGETS),
+      incompatibleTargets: incompatibleTargets(
+        DEPLOYABLE_RUNTIME_TARGETS,
+        conflictReasons,
+      ),
+      requirements: serverRequirements,
+      confidence: 0.97,
+      reasons: conflictReasons,
+    };
+  }
+
   if (requiresDedicatedServer) {
     return {
       profile: "server-runtime",
       compatibleTargets: copyTargets(DEDICATED_SERVER_COMPATIBLE_TARGETS),
-      incompatibleTargets: [
-        { target: "github-pages", reasons },
-        { target: "cloudflare-pages", reasons },
-        { target: "vercel", reasons },
-        { target: "netlify", reasons },
-        { target: "firebase-hosting", reasons },
-        { target: "google-cloud-run", reasons },
-        { target: "static-host", reasons },
-      ],
+      incompatibleTargets: incompatibleTargets(
+        [
+          "github-pages",
+          "cloudflare-pages",
+          "vercel",
+          "netlify",
+          "firebase-hosting",
+          "google-cloud-run",
+          "static-host",
+        ],
+        reasons,
+      ),
       requirements: serverRequirements,
       confidence: 0.98,
+      reasons,
+    };
+  }
+
+  if (input.mixedRuntime === true) {
+    return {
+      profile: "hybrid",
+      compatibleTargets: copyTargets(MIXED_RUNTIME_COMPATIBLE_TARGETS),
+      incompatibleTargets: incompatibleTargets(
+        [
+          "github-pages",
+          "cloudflare-pages",
+          "firebase-hosting",
+          "google-cloud-run",
+          "node",
+          "container",
+          "static-host",
+        ],
+        reasons,
+      ),
+      requirements: serverRequirements,
+      confidence: 0.97,
       reasons,
     };
   }
@@ -147,14 +252,17 @@ export function classifyDeployment(
     return {
       profile: "server-runtime",
       compatibleTargets: copyTargets(EDGE_COMPATIBLE_TARGETS),
-      incompatibleTargets: [
-        { target: "github-pages", reasons },
-        { target: "firebase-hosting", reasons },
-        { target: "google-cloud-run", reasons },
-        { target: "node", reasons },
-        { target: "container", reasons },
-        { target: "static-host", reasons },
-      ],
+      incompatibleTargets: incompatibleTargets(
+        [
+          "github-pages",
+          "firebase-hosting",
+          "google-cloud-run",
+          "node",
+          "container",
+          "static-host",
+        ],
+        reasons,
+      ),
       requirements: serverRequirements,
       confidence: 0.99,
       reasons,
@@ -164,12 +272,10 @@ export function classifyDeployment(
   return {
     profile: "server-runtime",
     compatibleTargets: copyTargets(SERVERLESS_COMPATIBLE_TARGETS),
-    incompatibleTargets: [
-      { target: "github-pages", reasons },
-      { target: "cloudflare-pages", reasons },
-      { target: "firebase-hosting", reasons },
-      { target: "static-host", reasons },
-    ],
+    incompatibleTargets: incompatibleTargets(
+      ["github-pages", "cloudflare-pages", "firebase-hosting", "static-host"],
+      reasons,
+    ),
     requirements: serverRequirements,
     confidence: 0.98,
     reasons,

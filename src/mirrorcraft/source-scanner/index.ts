@@ -13,6 +13,9 @@ export interface RuntimeEvidence {
     | "server-action"
     | "ssr"
     | "edge-runtime"
+    | "node-runtime"
+    | "cache-components"
+    | "runtime-conflict"
     | "websocket"
     | "database"
     | "filesystem-read"
@@ -26,10 +29,17 @@ export interface RuntimeEvidence {
 }
 
 export interface SourceRuntimeAnalysis extends DeploymentAnalysisInput {
-  /** Optional for backwards-compatible callers; scanSourceRuntime always emits a boolean. */
+  /** Optional for backwards-compatible callers; scanSourceRuntime always emits these fields. */
   edgeRuntime?: boolean;
+  edgeRuntimeFiles?: number;
+  nodeRuntimeFiles?: number;
+  mixedRuntime?: boolean;
+  cacheComponents?: boolean;
+  runtimeConflicts?: string[];
   evidence: RuntimeEvidence[];
 }
+
+type NextRuntime = "edge" | "nodejs";
 
 const DATABASE_PATTERNS: RegExp[] = [
   /\b(prisma|drizzle|mongoose|pg|mysql2|better-sqlite3)\b/i,
@@ -57,8 +67,28 @@ const FILESYSTEM_RUNTIME_PATTERNS: RegExp[] = [
   /require\(["'](?:node:)?fs(?:\/promises)?["']\)/,
 ];
 
-const EDGE_RUNTIME_PATTERN =
-  /\bexport\s+const\s+runtime\s*=\s*["']edge["']\s*;?/;
+const RUNTIME_EXPORT_PATTERN =
+  /\bexport\s+const\s+runtime\s*=\s*["'](edge|nodejs)["']\s*;?/;
+const CACHE_COMPONENTS_PATTERN = /\bcacheComponents\s*:\s*true\b/;
+const REQUEST_RUNTIME_PATTERN =
+  /\bgetServerSideProps\b|\bexport\s+const\s+dynamic\s*=\s*["']force-dynamic["']|\bnoStore\s*\(|\bunstable_noStore\s*\(/;
+
+function normalizePath(path: string): string {
+  return path.replaceAll("\\", "/").replace(/^\.\/+/, "");
+}
+
+function directoryOf(path: string): string {
+  const normalized = normalizePath(path);
+  const index = normalized.lastIndexOf("/");
+  return index < 0 ? "" : normalized.slice(0, index);
+}
+
+function explicitRuntime(content: string): NextRuntime | null {
+  const match = RUNTIME_EXPORT_PATTERN.exec(content);
+  return match?.[1] === "edge" || match?.[1] === "nodejs"
+    ? match[1]
+    : null;
+}
 
 function lineFor(content: string, index: number): number {
   return content.slice(0, Math.max(0, index)).split(/\r?\n/).length;
@@ -95,25 +125,82 @@ function isApiRoute(path: string): boolean {
     /(?:^|\/)pages\/api\/.+\.(?:ts|js)$/.test(path);
 }
 
+function isAppLayout(path: string): boolean {
+  return /(?:^|\/)app\/(?:.+\/)?layout\.(?:ts|tsx|js|jsx)$/.test(path) ||
+    /(?:^|\/)app\/layout\.(?:ts|tsx|js|jsx)$/.test(path);
+}
+
 function isDynamicRoute(path: string): boolean {
   return /\[[^\]]+\]/.test(path);
 }
 
+function inheritedRuntime(
+  path: string,
+  layoutRuntimes: ReadonlyMap<string, NextRuntime>,
+): NextRuntime | null {
+  let directory = directoryOf(path);
+  while (directory) {
+    const runtime = layoutRuntimes.get(directory);
+    if (runtime) return runtime;
+    const separator = directory.lastIndexOf("/");
+    if (separator < 0) break;
+    directory = directory.slice(0, separator);
+  }
+  return null;
+}
+
+function effectiveRuntimeForRoute(
+  file: SourceFileInput,
+  layoutRuntimes: ReadonlyMap<string, NextRuntime>,
+): NextRuntime | null {
+  return explicitRuntime(file.content) ?? inheritedRuntime(file.path, layoutRuntimes);
+}
+
 export function scanSourceRuntime(files: SourceFileInput[]): SourceRuntimeAnalysis {
   const evidence: RuntimeEvidence[] = [];
+  const normalizedFiles = files.map((file) => ({
+    ...file,
+    path: normalizePath(file.path),
+  }));
+  const layoutRuntimes = new Map<string, NextRuntime>();
+  let cacheComponents = false;
+  let cacheComponentsPath: string | null = null;
+
+  for (const file of normalizedFiles) {
+    if (isAppLayout(file.path)) {
+      const runtime = explicitRuntime(file.content);
+      if (runtime) layoutRuntimes.set(directoryOf(file.path), runtime);
+    }
+    if (/^(?:.+\/)?next\.config\.(?:ts|js|mjs|cjs)$/.test(file.path) && CACHE_COMPONENTS_PATTERN.test(file.content)) {
+      cacheComponents = true;
+      cacheComponentsPath ??= file.path;
+      addEvidence(
+        evidence,
+        file,
+        "cache-components",
+        CACHE_COMPONENTS_PATTERN,
+        "Next.js Cache Components are enabled.",
+        0.99,
+      );
+    }
+  }
+
   let routes = 0;
   let dynamicRoutes = 0;
   let apiRoutes = 0;
   let serverActions = 0;
   let requestTimeSsr = false;
-  let edgeRuntime = false;
+  let edgeRuntimeFiles = 0;
+  let nodeRuntimeFiles = 0;
+  let explicitEdgeSeen = false;
   let websocketServer = false;
   let privateDatabaseRuntime = false;
   let writableFilesystemRuntime = false;
   let authRequiresServer = false;
   const unsupportedStaticFeatures = new Set<string>();
+  const runtimeConflicts: string[] = [];
 
-  for (const file of files) {
+  for (const file of normalizedFiles) {
     if (isPageRoute(file.path)) {
       routes += 1;
       evidence.push({
@@ -135,17 +222,48 @@ export function scanSourceRuntime(files: SourceFileInput[]): SourceRuntimeAnalys
       });
     }
 
-    if (
+    const configuredRuntime = explicitRuntime(file.content);
+    if (configuredRuntime === "edge") {
+      explicitEdgeSeen = true;
       addEvidence(
         evidence,
         file,
         "edge-runtime",
-        EDGE_RUNTIME_PATTERN,
+        RUNTIME_EXPORT_PATTERN,
         "Explicit Next.js Edge runtime segment configuration detected.",
         0.99,
-      )
-    ) {
-      edgeRuntime = true;
+      );
+    }
+
+    const runtimeBearingRoute = isPageRoute(file.path) || isApiRoute(file.path);
+    if (runtimeBearingRoute) {
+      const effectiveRuntime = effectiveRuntimeForRoute(file, layoutRuntimes);
+      if (effectiveRuntime === "edge") {
+        edgeRuntimeFiles += 1;
+        if (configuredRuntime !== "edge") {
+          evidence.push({
+            kind: "edge-runtime",
+            path: file.path,
+            summary: "Route inherits Edge runtime from an ancestor layout.",
+            confidence: 0.97,
+          });
+        }
+      } else if (
+        effectiveRuntime === "nodejs" ||
+        isApiRoute(file.path) ||
+        REQUEST_RUNTIME_PATTERN.test(file.content)
+      ) {
+        nodeRuntimeFiles += 1;
+        evidence.push({
+          kind: "node-runtime",
+          path: file.path,
+          summary:
+            effectiveRuntime === "nodejs"
+              ? "Node.js runtime route detected."
+              : "Route requires the default Node.js/serverless runtime.",
+          confidence: 0.96,
+        });
+      }
     }
 
     if (addEvidence(evidence, file, "server-action", /["']use server["']\s*;?/, "Server Action directive detected.", 0.99)) {
@@ -210,6 +328,19 @@ export function scanSourceRuntime(files: SourceFileInput[]): SourceRuntimeAnalys
     }
   }
 
+  const edgeRuntime = edgeRuntimeFiles > 0 || explicitEdgeSeen;
+  const mixedRuntime = edgeRuntimeFiles > 0 && nodeRuntimeFiles > 0;
+
+  if (cacheComponents && edgeRuntime) {
+    runtimeConflicts.push("cache-components-edge-runtime");
+    evidence.push({
+      kind: "runtime-conflict",
+      path: cacheComponentsPath ?? "next.config",
+      summary: "Cache Components are incompatible with the configured Edge runtime.",
+      confidence: 0.99,
+    });
+  }
+
   return {
     routes,
     dynamicRoutes,
@@ -217,6 +348,11 @@ export function scanSourceRuntime(files: SourceFileInput[]): SourceRuntimeAnalys
     serverActions,
     requestTimeSsr,
     edgeRuntime,
+    edgeRuntimeFiles,
+    nodeRuntimeFiles,
+    mixedRuntime,
+    cacheComponents,
+    runtimeConflicts,
     websocketServer,
     privateDatabaseRuntime,
     writableFilesystemRuntime,

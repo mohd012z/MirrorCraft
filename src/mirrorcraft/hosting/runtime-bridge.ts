@@ -25,9 +25,18 @@ export function deriveHostingRuntime(
     ),
 ): "server";
 export function deriveHostingRuntime(
+  recommendation: DeploymentRecommendation & { profile: "hybrid" },
+  analysis: SourceRuntimeAnalysis & {
+    mixedRuntime: true;
+    websocketServer: false;
+    writableFilesystemRuntime: false;
+  },
+): "serverless";
+export function deriveHostingRuntime(
   recommendation: DeploymentRecommendation & { profile: "server-runtime" | "hybrid" },
   analysis: SourceRuntimeAnalysis & {
     edgeRuntime: true;
+    mixedRuntime?: false;
     websocketServer: false;
     writableFilesystemRuntime: false;
   },
@@ -36,6 +45,7 @@ export function deriveHostingRuntime(
   recommendation: DeploymentRecommendation & { profile: "server-runtime" | "hybrid" },
   analysis: SourceRuntimeAnalysis & {
     edgeRuntime?: false;
+    mixedRuntime?: false;
     websocketServer: false;
     writableFilesystemRuntime: false;
   },
@@ -55,6 +65,7 @@ export function deriveHostingRuntime(
     return "server";
   }
 
+  if (analysis.mixedRuntime) return "serverless";
   if (analysis.edgeRuntime) return "edge";
 
   return "serverless";

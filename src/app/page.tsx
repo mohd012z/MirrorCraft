@@ -129,10 +129,11 @@ export default function Home() {
             <PipelineSection />
           </div>
           <p className="mt-8 max-w-2xl text-sm leading-relaxed text-iron">
-            Works with the agents you already use — Cursor, Claude Code, Codex,
-            Copilot, Windsurf, OpenCode, Gemini CLI, Aider.{" "}
+            Plugs into the coding agent you already run — Cursor, Claude Code,
+            Codex, Copilot, Windsurf, OpenCode, Gemini CLI or Aider. Bring a
+            URL, get back an editable clone.{" "}
             <span className="text-slag/80">
-              Clone only sites you own or have permission to reproduce.
+              Only sites you own or have explicit permission to reproduce.
             </span>
           </p>
         </div>
@@ -146,7 +147,7 @@ export default function Home() {
               <span className="text-ember">Mirror</span>Craft
             </span>
             <span className="mx-2">·</span>
-            MIT · inspired by{" "}
+            MIT · adapted from the{" "}
             <a
               href="https://github.com/JCodesMore/ai-website-cloner-template"
               target="_blank"
@@ -154,7 +155,8 @@ export default function Home() {
               className="text-slag underline-offset-2 hover:text-spark hover:underline"
             >
               JCodesMore
-            </a>
+            </a>{" "}
+            AI website cloner template
           </p>
           <Link href={REPO} className="text-slag transition-colors hover:text-spark">
             Star the repo →

@@ -189,6 +189,34 @@ try {
   assert.equal(missing.status, "blocked", "deployment without policy envelope must fail closed");
   assert.equal(publishCalls, 0, "adapter must not run without a policy envelope");
 
+  const tamperedPolicyEnvelope = {
+    version: 1,
+    snapshotId: "policy-rev-current-tampered",
+    projectId: manifest.projectId,
+    revision: manifest.revision,
+    commit: manifest.commit,
+    createdAt: "2026-09-27T10:00:00.000Z",
+    digest: "sha256:not-a-real-digest",
+    decision: {
+      allowed: true,
+      blockers: [],
+      warnings: [],
+      restrictions: [],
+    },
+  };
+
+  const tampered = await router.publish({
+    target: "github-pages",
+    manifest,
+    artifactPath: "out",
+    provider,
+    connection,
+    policyEnvelope: tamperedPolicyEnvelope,
+  });
+
+  assert.equal(tampered.status, "blocked", "tampered policy envelope must fail closed");
+  assert.equal(publishCalls, 0, "adapter must not run for a tampered policy envelope");
+
   console.log("MirrorCraft revision-bound policy smoke passed");
 } finally {
   await rm(TEMP_ROOT, { recursive: true, force: true });

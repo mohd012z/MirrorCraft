@@ -42,7 +42,7 @@
     "smoke:example": "node scripts/smoke-clone-example.mjs",
     "smoke:crypto": "node scripts/smoke-crypto.mjs",
     "smoke:integrations": "node scripts/smoke-integration-boundary.mjs",
-    "smoke:providers": "node scripts/smoke-provider-adapters.mjs",
+    "smoke:providers": "node scripts/smoke-provider-adapters.mjs && node scripts/smoke-zero-cost-hosting.mjs",
     "smoke:editing-plan": "node scripts/smoke-editing-plan-contracts.mjs",
     "smoke:runtime": "node scripts/smoke-runtime-classifier.mjs",
     "smoke:domain": "node scripts/smoke-domain-planner.mjs",

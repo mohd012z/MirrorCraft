@@ -210,14 +210,22 @@ function bytesToBase64Url(bytes: Uint8Array): string {
     .replace(/=+$/u, "");
 }
 
-function base64UrlToBytes(value: string): Uint8Array {
+function copyToArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  return copy.buffer;
+}
+
+function base64UrlToBuffer(value: string): ArrayBuffer {
   if (!/^[A-Za-z0-9_-]+$/u.test(value)) {
     throw new Error("Policy attestation signature is not valid base64url");
   }
   const normalized = value.replaceAll("-", "+").replaceAll("_", "/");
   const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
   const binary = globalThis.atob(padded);
-  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+  return copyToArrayBuffer(
+    Uint8Array.from(binary, (character) => character.charCodeAt(0)),
+  );
 }
 
 async function sha256(value: string): Promise<string> {
@@ -252,15 +260,17 @@ async function digestPayload(payload: EnvelopePayload): Promise<`sha256:${string
 function policyAttestationMessage(
   digest: `sha256:${string}`,
   keyId: string,
-): Uint8Array {
-  return new TextEncoder().encode(
-    [
-      "MIRRORCRAFT-REVISION-POLICY-ATTESTATION",
-      `version=${REVISION_POLICY_ENVELOPE_VERSION}`,
-      `algorithm=${REVISION_POLICY_ATTESTATION_ALGORITHM}`,
-      `keyId=${keyId}`,
-      `digest=${digest}`,
-    ].join("\n"),
+): ArrayBuffer {
+  return copyToArrayBuffer(
+    new TextEncoder().encode(
+      [
+        "MIRRORCRAFT-REVISION-POLICY-ATTESTATION",
+        `version=${REVISION_POLICY_ENVELOPE_VERSION}`,
+        `algorithm=${REVISION_POLICY_ATTESTATION_ALGORITHM}`,
+        `keyId=${keyId}`,
+        `digest=${digest}`,
+      ].join("\n"),
+    ),
   );
 }
 
@@ -343,9 +353,9 @@ export function createEcdsaP256PolicyVerifier(
       const publicKey = trustedKeys.get(keyId);
       if (!publicKey) return false;
 
-      let signature: Uint8Array;
+      let signature: ArrayBuffer;
       try {
-        signature = base64UrlToBytes(attestation.signature);
+        signature = base64UrlToBuffer(attestation.signature);
       } catch {
         return false;
       }

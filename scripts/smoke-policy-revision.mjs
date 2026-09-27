@@ -166,7 +166,7 @@ try {
     },
   };
 
-  const result = await router.publish({
+  const stale = await router.publish({
     target: "github-pages",
     manifest,
     artifactPath: "out",
@@ -175,8 +175,19 @@ try {
     policyEnvelope: stalePolicyEnvelope,
   });
 
-  assert.equal(result.status, "blocked", "stale policy envelope must not publish a newer revision");
+  assert.equal(stale.status, "blocked", "stale policy envelope must not publish a newer revision");
   assert.equal(publishCalls, 0, "adapter must not run for a stale policy envelope");
+
+  const missing = await router.publish({
+    target: "github-pages",
+    manifest,
+    artifactPath: "out",
+    provider,
+    connection,
+  });
+
+  assert.equal(missing.status, "blocked", "deployment without policy envelope must fail closed");
+  assert.equal(publishCalls, 0, "adapter must not run without a policy envelope");
 
   console.log("MirrorCraft revision-bound policy smoke passed");
 } finally {

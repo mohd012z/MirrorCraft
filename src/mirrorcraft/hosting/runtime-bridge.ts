@@ -3,6 +3,7 @@ import type { SourceRuntimeAnalysis } from "@/mirrorcraft/source-scanner";
 
 export type HostingRuntimeDecision =
   | "static"
+  | "edge"
   | "serverless"
   | "server"
   | "artifact-only";
@@ -26,6 +27,15 @@ export function deriveHostingRuntime(
 export function deriveHostingRuntime(
   recommendation: DeploymentRecommendation & { profile: "server-runtime" | "hybrid" },
   analysis: SourceRuntimeAnalysis & {
+    edgeRuntime: true;
+    websocketServer: false;
+    writableFilesystemRuntime: false;
+  },
+): "edge";
+export function deriveHostingRuntime(
+  recommendation: DeploymentRecommendation & { profile: "server-runtime" | "hybrid" },
+  analysis: SourceRuntimeAnalysis & {
+    edgeRuntime: false;
     websocketServer: false;
     writableFilesystemRuntime: false;
   },
@@ -44,6 +54,8 @@ export function deriveHostingRuntime(
   if (analysis.websocketServer || analysis.writableFilesystemRuntime) {
     return "server";
   }
+
+  if (analysis.edgeRuntime) return "edge";
 
   return "serverless";
 }

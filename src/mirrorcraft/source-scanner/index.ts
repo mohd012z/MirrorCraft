@@ -12,6 +12,7 @@ export interface RuntimeEvidence {
     | "api-route"
     | "server-action"
     | "ssr"
+    | "edge-runtime"
     | "websocket"
     | "database"
     | "filesystem-read"
@@ -25,6 +26,7 @@ export interface RuntimeEvidence {
 }
 
 export interface SourceRuntimeAnalysis extends DeploymentAnalysisInput {
+  edgeRuntime: boolean;
   evidence: RuntimeEvidence[];
 }
 
@@ -53,6 +55,9 @@ const FILESYSTEM_RUNTIME_PATTERNS: RegExp[] = [
   /import\s+(?!type\b)[^;]*from\s+["'](?:node:)?fs(?:\/promises)?["']/,
   /require\(["'](?:node:)?fs(?:\/promises)?["']\)/,
 ];
+
+const EDGE_RUNTIME_PATTERN =
+  /\bexport\s+const\s+runtime\s*=\s*["']edge["']\s*;?/;
 
 function lineFor(content: string, index: number): number {
   return content.slice(0, Math.max(0, index)).split(/\r?\n/).length;
@@ -100,6 +105,7 @@ export function scanSourceRuntime(files: SourceFileInput[]): SourceRuntimeAnalys
   let apiRoutes = 0;
   let serverActions = 0;
   let requestTimeSsr = false;
+  let edgeRuntime = false;
   let websocketServer = false;
   let privateDatabaseRuntime = false;
   let writableFilesystemRuntime = false;
@@ -126,6 +132,19 @@ export function scanSourceRuntime(files: SourceFileInput[]): SourceRuntimeAnalys
         summary: "Next.js API/route handler detected.",
         confidence: 0.99,
       });
+    }
+
+    if (
+      addEvidence(
+        evidence,
+        file,
+        "edge-runtime",
+        EDGE_RUNTIME_PATTERN,
+        "Explicit Next.js Edge runtime segment configuration detected.",
+        0.99,
+      )
+    ) {
+      edgeRuntime = true;
     }
 
     if (addEvidence(evidence, file, "server-action", /["']use server["']\s*;?/, "Server Action directive detected.", 0.99)) {
@@ -196,6 +215,7 @@ export function scanSourceRuntime(files: SourceFileInput[]): SourceRuntimeAnalys
     apiRoutes,
     serverActions,
     requestTimeSsr,
+    edgeRuntime,
     websocketServer,
     privateDatabaseRuntime,
     writableFilesystemRuntime,

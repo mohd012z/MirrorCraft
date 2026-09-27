@@ -33,8 +33,8 @@ jobs:
           node-version: 20
           cache: npm
 
-      - name: Regenerate lockfile with npm
-        run: npm install --package-lock-only --ignore-scripts --no-audit
+      - name: Apply non-force production audit fix to lockfile
+        run: npm audit fix --package-lock-only --omit=dev --ignore-scripts || true
 
       - name: Validate generated lockfile
         run: npm ci

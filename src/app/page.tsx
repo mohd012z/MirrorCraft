@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { CloneUrlBar } from "@/components/clone-url-bar";
+
 const REPO = "https://github.com/mohd012z/MirrorCraft";
 
 export default function Home() {
@@ -15,10 +17,16 @@ export default function Home() {
           </span>
           <div className="flex items-center gap-3 text-sm text-iron">
             <Link
-              href="/demos/example"
+              href="/clones"
               className="transition-colors hover:text-slag"
             >
-              Smoke demo
+              Clones
+            </Link>
+            <Link
+              href="/studio"
+              className="transition-colors hover:text-slag"
+            >
+              Studio
             </Link>
             <Link
               href={`${REPO}#readme`}
@@ -51,18 +59,21 @@ export default function Home() {
             </p>
             <div className="cf-rise cf-rise-delay-4 mt-8 flex flex-wrap items-center gap-3">
               <Link
-                href={`${REPO}/generate`}
+                href="/clones"
                 className="inline-flex h-11 items-center justify-center rounded-md bg-ember px-5 text-sm font-semibold text-primary-foreground transition hover:bg-spark"
               >
-                Use this template
+                View built clones
               </Link>
               <Link
-                href={REPO}
+                href="/studio"
                 className="inline-flex h-11 items-center justify-center rounded-md border border-border bg-transparent px-5 text-sm font-medium text-slag transition hover:border-ember/50 hover:text-spark"
               >
-                ★ Star on GitHub
+                Open direct-edit studio
               </Link>
             </div>
+
+            <CloneUrlBar />
+
             <p className="cf-rise cf-rise-delay-4 mt-5 font-mono text-xs text-iron">
               npm run setup · /clone-website &lt;url&gt;
             </p>

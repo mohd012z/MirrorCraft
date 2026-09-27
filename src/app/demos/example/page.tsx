@@ -50,8 +50,8 @@ export default function ExampleComClone() {
         }}
       >
         MirrorCraft smoke test ·{" "}
-        <Link href="/" style={{ color: "#348" }}>
-          ← back to landing
+        <Link href="/clones" className="text-sm font-semibold underline" style={{ color: "#348" }}>
+          ← back to clone gallery
         </Link>
       </p>
     </main>

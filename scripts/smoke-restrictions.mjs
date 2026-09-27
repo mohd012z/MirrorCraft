@@ -238,12 +238,24 @@ try {
     executionMode: "runtime-connector",
     warnings: [],
   };
+  const connection = {
+    id: "primary",
+    providerId: "github",
+    authMode: "oauth",
+    health: "connected",
+    capabilities: ["source-control", "hosting"],
+    hasSecretMaterial: true,
+    secretCount: 1,
+    createdAt: "2026-09-27T00:00:00.000Z",
+    checkedAt: "2026-09-27T09:00:00.000Z",
+  };
 
   const blocked = await router.publish({
     target: "github-pages",
     manifest,
     artifactPath: "out",
     provider,
+    connection,
     restrictions: policyBlock,
   });
   assert.equal(blocked.status, "blocked");
@@ -258,11 +270,26 @@ try {
   assert.equal(missingProvider.status, "blocked");
   assert.equal(publishCalls, 0);
 
+  const missingConnection = await router.publish({
+    target: "github-pages",
+    manifest,
+    artifactPath: "out",
+    provider,
+  });
+  assert.equal(missingConnection.status, "blocked");
+  assert.equal(publishCalls, 0);
+  assert.ok(
+    missingConnection.errors.some((message) =>
+      message.includes("connection context"),
+    ),
+  );
+
   const unready = await router.publish({
     target: "github-pages",
     manifest: unreadyManifest,
     artifactPath: "out",
     provider,
+    connection,
   });
   assert.equal(unready.status, "blocked");
   assert.equal(publishCalls, 0);
@@ -272,11 +299,28 @@ try {
     ),
   );
 
+  const missingDomainPlan = await router.publish({
+    target: "github-pages",
+    manifest,
+    artifactPath: "out",
+    customDomain: "example.test",
+    provider,
+    connection,
+  });
+  assert.equal(missingDomainPlan.status, "blocked");
+  assert.equal(publishCalls, 0);
+  assert.ok(
+    missingDomainPlan.errors.some((message) =>
+      message.includes("verified domain plan"),
+    ),
+  );
+
   const published = await router.publish({
     target: "github-pages",
     manifest,
     artifactPath: "out",
     provider,
+    connection,
   });
   assert.equal(published.status, "published");
   assert.equal(publishCalls, 1);

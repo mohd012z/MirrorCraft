@@ -133,6 +133,44 @@ try {
     checkedAt: "2026-09-27T10:00:00.000Z",
   };
 
+  const assessmentKinds = [
+    "access",
+    "hosting",
+    "security",
+    "runtime",
+    "integration",
+    "domain",
+    "publish",
+  ];
+  const assessments = Object.fromEntries(
+    assessmentKinds.map((kind) => [
+      kind,
+      {
+        status: kind === "domain" ? "not-applicable" : "pass",
+        evaluatedAt: "2026-09-27T10:00:00.000Z",
+        evidence: [`fixture:${kind}`],
+      },
+    ]),
+  );
+  const assessmentEnvelope = await revisionPolicy.createRevisionPolicyEnvelope({
+    snapshotId: "policy-rev-current-assessed",
+    manifest,
+    createdAt: "2026-09-27T10:00:00.000Z",
+    assessments,
+    decision: {
+      allowed: true,
+      blockers: [],
+      warnings: [],
+      restrictions: [],
+    },
+  });
+  assert.ok(
+    assessmentEnvelope.assessments,
+    "revision policy envelope must preserve typed assessment snapshots",
+  );
+  assert.deepEqual(Object.keys(assessmentEnvelope.assessments).sort(), assessmentKinds.sort());
+  assert.ok(Object.isFrozen(assessmentEnvelope.assessments.integration));
+
   let publishCalls = 0;
   const router = new deployment.DeploymentRouter();
   router.register({
@@ -243,6 +281,7 @@ try {
     manifest,
     createdAt: "2026-09-27T10:00:00.000Z",
     ttlMs: 15 * 60 * 1000,
+    assessments,
     decision: {
       allowed: true,
       blockers: [],

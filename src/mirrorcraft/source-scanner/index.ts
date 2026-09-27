@@ -26,7 +26,8 @@ export interface RuntimeEvidence {
 }
 
 export interface SourceRuntimeAnalysis extends DeploymentAnalysisInput {
-  edgeRuntime: boolean;
+  /** Optional for backwards-compatible callers; scanSourceRuntime always emits a boolean. */
+  edgeRuntime?: boolean;
   evidence: RuntimeEvidence[];
 }
 

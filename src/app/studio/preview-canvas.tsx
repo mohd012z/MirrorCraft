@@ -39,6 +39,7 @@ import {
   type InlineEditSession,
 } from "@/mirrorcraft/editing/canvas-bridge";
 import type { WebStructureGraph } from "@/mirrorcraft/web-structure/types";
+import { STUDIO_EVENTS, onStudioEvent } from "@/app/studio/studio-bus";
 
 const GRAPH: WebStructureGraph = {
   projectId: "mirrorcraft-studio-demo",
@@ -161,6 +162,21 @@ export function PreviewCanvas() {
     update();
     mq.addEventListener?.("change", update);
     return () => mq.removeEventListener?.("change", update);
+  }, []);
+
+  // Inspector (Responsive tab) drives the viewport directly.
+  useEffect(() => {
+    return onStudioEvent(STUDIO_EVENTS.viewport, (detail) => {
+      if (
+        detail === "auto" ||
+        detail === "portrait" ||
+        detail === "landscape" ||
+        detail === "desktop" ||
+        detail === "wide"
+      ) {
+        setViewport(detail);
+      }
+    });
   }, []);
 
   const resolvedViewport: Exclude<ViewportId, "auto"> =

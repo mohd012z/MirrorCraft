@@ -11,7 +11,11 @@ export const STUDIO_EVENTS = {
   redo: "mirrorcraft:studio-redo",
   io: "mirrorcraft:studio-io", // detail: "import" | "export" | "load"
   selectSection: "mirrorcraft:studio-select-section", // detail: { id }
+  selectSlot: "mirrorcraft:studio-select-slot", // detail: { instanceId, slot, label }
+  viewport: "mirrorcraft:studio-viewport", // detail: "auto" | "portrait" | "landscape" | "desktop" | "wide"
   expandDesign: "mirrorcraft:studio-expand-design",
+  publish: "mirrorcraft:studio-publish", // detail: { compiled: boolean }
+  toast: "mirrorcraft:studio-toast", // detail: { message: string }
 } as const;
 
 export function dispatchStudioEvent(

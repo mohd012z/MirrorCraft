@@ -11,6 +11,7 @@ import { StudioOperationsSurface } from "@/app/studio/studio-operations-surface"
 import { StudioProjectIOPanel } from "@/app/studio/studio-project-io-panel";
 import { StudioRestrictionSurface } from "@/app/studio/studio-restriction-surface";
 import { StudioRecoveryPanel } from "@/app/studio/studio-recovery-panel";
+import { TemplateStudio } from "@/app/studio/template-studio";
 import { useStudioRecovery } from "@/app/studio/use-studio-recovery";
 import { STUDIO_EVENTS, onStudioEvent } from "@/app/studio/studio-bus";
 import {
@@ -54,6 +55,26 @@ export function StudioCompositionSurface() {
     ),
   );
   const [paletteId, setPaletteId] = useState("slate");
+  const [toast, setToast] = useState<string | null>(null);
+
+  // Light toasts from the template shell (publish gate, inspector hints).
+  useEffect(() => {
+    let timer: number | undefined;
+    const off = onStudioEvent(STUDIO_EVENTS.toast, (detail) => {
+      const message =
+        typeof detail === "object" && detail !== null && "message" in detail
+          ? String((detail as { message: string }).message)
+          : null;
+      if (!message) return;
+      setToast(message);
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => setToast(null), 2600);
+    });
+    return () => {
+      off();
+      window.clearTimeout(timer);
+    };
+  }, []);
 
   const recovery = useStudioRecovery({
     projectId: STUDIO_RECOVERY_PROJECT_ID,
@@ -99,13 +120,13 @@ export function StudioCompositionSurface() {
     [composition, content],
   );
 
-  function changeComposition(next: PageComposition) {
+  function changeComposition(next: PageComposition, label = "Update page structure") {
     setHistory((current) => {
       const nextContent = reconcileSectionContentState(current.present.content, next);
       return recordStudioSnapshot(
         current,
         createStudioSnapshot(next, nextContent),
-        { label: "Update page structure" },
+        { label },
       );
     });
   }
@@ -121,8 +142,39 @@ export function StudioCompositionSurface() {
   }
 
   return (
-    <div className="space-y-5">
-      {/* Category: Page — inline edit + quick bar */}
+    <TemplateStudio
+      composition={composition}
+      content={content}
+      graph={graph}
+      historyEntries={history.entries.length}
+      onCompositionChange={changeComposition}
+      onContentChange={changeContent}
+      onRestore={(record) =>
+        setHistory(
+          createStudioHistory(
+            createStudioSnapshot(record.snapshot.composition, record.snapshot.content),
+            100,
+          ),
+        )
+      }
+      onNewProject={() => {
+        const nextComposition = createPageComposition(`project-${Date.now() % 100000}`, [
+          "navbar-simple",
+          "hero-centered",
+          "features-grid",
+          "cta-banner",
+          "footer-columns",
+        ]);
+        setHistory(
+          createStudioHistory(
+            createStudioSnapshot(nextComposition, createSectionContentState(nextComposition)),
+            100,
+          ),
+        );
+      }}
+    >
+      <div className="space-y-5 px-3 py-4 lg:px-5">
+        {/* Category: Page — inline edit + quick bar */}
       <div id="page-edit" className="scroll-mt-6">
         <CategoryLabel
           index="01"
@@ -192,7 +244,6 @@ export function StudioCompositionSurface() {
         <StudioRecoveryPanel controller={recovery} />
         <StudioOperationsSurface selection={null} />
         <StudioRestrictionSurface envelope={null} />
-        <StudioCompileBar />
 
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.025] px-3 py-2 text-xs text-white/50">
           <span>Shared page model</span>
@@ -206,7 +257,17 @@ export function StudioCompositionSurface() {
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Toast (publish gate / inspector hints) */}
+      {toast ? (
+        <div className="pointer-events-none fixed inset-x-0 bottom-12 z-[70] flex justify-center px-4">
+          <div className="rounded-lg border border-teal-300/40 bg-[#0d1320]/95 px-4 py-2 text-xs text-teal-100 shadow-xl">
+            {toast}
+          </div>
+        </div>
+      ) : null}
+      </div>
+    </TemplateStudio>
   );
 }
 
@@ -259,34 +320,6 @@ function StudioDesignSurface() {
           <PreviewCanvas />
         </div>
       ) : null}
-    </div>
-  );
-}
-
-/* ---------- Project category: compile gate (keeps the "Compile" action honest) ---------- */
-
-function StudioCompileBar() {
-  const [status, setStatus] = useState("Not compiled yet");
-  function compile() {
-    setStatus(
-      "Compile verified — the static export builds (npm run build). Publishing is gated on hosting + domain evidence.",
-    );
-  }
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.025] p-4">
-      <div>
-        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-300">
-          Compile · Publish gate
-        </div>
-        <p className="mt-1 max-w-xl text-xs text-white/45">{status}</p>
-      </div>
-      <button
-        type="button"
-        onClick={compile}
-        className="h-9 rounded-md bg-teal-400 px-4 text-xs font-semibold text-slate-950 hover:bg-teal-300"
-      >
-        Compile
-      </button>
     </div>
   );
 }

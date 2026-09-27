@@ -20,6 +20,7 @@ import {
   type SectionInstance,
 } from "@/mirrorcraft/section-composer";
 import { SectionQuickBar, type AlignId } from "@/app/studio/section-quickbar";
+import { dispatchStudioEvent, STUDIO_EVENTS } from "@/app/studio/studio-bus";
 
 function requirePreset(presetId: string): SectionPreset {
   const preset = SECTION_PRESETS.find((item) => item.id === presetId);
@@ -85,6 +86,12 @@ export function EditableComposedPagePreview({
     setSelectedSectionId(section.instanceId);
     setSelection({ instanceId: section.instanceId, slot, label: label ?? slot });
     setDraft(slotValue(content, section, slot));
+    // Surface the selection in the right-hand Inspector (template shell).
+    dispatchStudioEvent(STUDIO_EVENTS.selectSlot, {
+      instanceId: section.instanceId,
+      slot,
+      label: label ?? slot,
+    });
   }
 
   function applyDraft() {

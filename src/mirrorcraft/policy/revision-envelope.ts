@@ -4,6 +4,7 @@ import type { ReleaseManifest } from "@/mirrorcraft/release-manifest";
 export const REVISION_POLICY_ENVELOPE_VERSION = 1 as const;
 export const DEFAULT_REVISION_POLICY_TTL_MS = 15 * 60 * 1000;
 export const MAX_REVISION_POLICY_TTL_MS = 60 * 60 * 1000;
+export const REVISION_POLICY_ATTESTATION_ALGORITHM = "ECDSA-P256-SHA256" as const;
 export const REVISION_POLICY_ASSESSMENT_KINDS = [
   "access",
   "hosting",
@@ -32,6 +33,24 @@ export type RevisionPolicyAssessments = Readonly<
   Record<RevisionPolicyAssessmentKind, RevisionPolicyAssessment>
 >;
 
+export interface RevisionPolicyAttestation {
+  readonly algorithm: typeof REVISION_POLICY_ATTESTATION_ALGORITHM;
+  readonly keyId: string;
+  readonly signature: string;
+}
+
+export interface RevisionPolicyEnvelopeSigner {
+  readonly keyId: string;
+  signDigest(digest: `sha256:${string}`): Promise<RevisionPolicyAttestation>;
+}
+
+export interface RevisionPolicyEnvelopeVerifier {
+  verifyDigest(
+    digest: `sha256:${string}`,
+    attestation: RevisionPolicyAttestation,
+  ): Promise<boolean>;
+}
+
 export interface RevisionPolicyEnvelope {
   readonly version: typeof REVISION_POLICY_ENVELOPE_VERSION;
   readonly snapshotId: string;
@@ -42,6 +61,7 @@ export interface RevisionPolicyEnvelope {
   readonly expiresAt: string;
   readonly assessments: RevisionPolicyAssessments;
   readonly digest: `sha256:${string}`;
+  readonly attestation?: RevisionPolicyAttestation;
   readonly decision: RestrictionDecision;
 }
 
@@ -60,7 +80,7 @@ export interface RevisionPolicyEnvelopeValidation {
   evidence: readonly string[];
 }
 
-type EnvelopePayload = Omit<RevisionPolicyEnvelope, "digest">;
+type EnvelopePayload = Omit<RevisionPolicyEnvelope, "digest" | "attestation">;
 
 const ASSESSMENT_STATUSES = new Set<RevisionPolicyAssessmentStatus>([
   "pass",
@@ -180,6 +200,26 @@ function bytesToHex(bytes: Uint8Array): string {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
+function bytesToBase64Url(bytes: Uint8Array): string {
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return globalThis
+    .btoa(binary)
+    .replaceAll("+", "-")
+    .replaceAll("/", "_")
+    .replace(/=+$/u, "");
+}
+
+function base64UrlToBytes(value: string): Uint8Array {
+  if (!/^[A-Za-z0-9_-]+$/u.test(value)) {
+    throw new Error("Policy attestation signature is not valid base64url");
+  }
+  const normalized = value.replaceAll("-", "+").replaceAll("_", "/");
+  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+  const binary = globalThis.atob(padded);
+  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+}
+
 async function sha256(value: string): Promise<string> {
   if (!globalThis.crypto?.subtle) {
     throw new Error("Web Crypto API is unavailable for revision policy validation");
@@ -209,6 +249,117 @@ async function digestPayload(payload: EnvelopePayload): Promise<`sha256:${string
   return `sha256:${await sha256(canonicalJson(payload))}`;
 }
 
+function policyAttestationMessage(
+  digest: `sha256:${string}`,
+  keyId: string,
+): Uint8Array {
+  return new TextEncoder().encode(
+    [
+      "MIRRORCRAFT-REVISION-POLICY-ATTESTATION",
+      `version=${REVISION_POLICY_ENVELOPE_VERSION}`,
+      `algorithm=${REVISION_POLICY_ATTESTATION_ALGORITHM}`,
+      `keyId=${keyId}`,
+      `digest=${digest}`,
+    ].join("\n"),
+  );
+}
+
+function assertEcdsaP256Key(
+  key: CryptoKey,
+  expectedType: "private" | "public",
+  requiredUsage: "sign" | "verify",
+): void {
+  const algorithm = key.algorithm as EcKeyAlgorithm;
+  if (
+    key.type !== expectedType ||
+    algorithm.name !== "ECDSA" ||
+    algorithm.namedCurve !== "P-256" ||
+    !key.usages.includes(requiredUsage)
+  ) {
+    throw new Error(
+      `Revision policy ${requiredUsage} key must be an ECDSA P-256 ${expectedType} CryptoKey`,
+    );
+  }
+}
+
+function normalizeKeyId(keyId: string): string {
+  const normalized = keyId.trim();
+  if (!normalized || normalized.length > 128) {
+    throw new Error("Revision policy attestation keyId must be 1-128 characters");
+  }
+  return normalized;
+}
+
+function cloneAttestation(
+  attestation: RevisionPolicyAttestation,
+): RevisionPolicyAttestation {
+  return {
+    algorithm: attestation.algorithm,
+    keyId: attestation.keyId,
+    signature: attestation.signature,
+  };
+}
+
+export function createEcdsaP256PolicySigner(
+  keyId: string,
+  privateKey: CryptoKey,
+): RevisionPolicyEnvelopeSigner {
+  const normalizedKeyId = normalizeKeyId(keyId);
+  assertEcdsaP256Key(privateKey, "private", "sign");
+
+  return {
+    keyId: normalizedKeyId,
+    async signDigest(digest) {
+      const signature = await globalThis.crypto.subtle.sign(
+        { name: "ECDSA", hash: "SHA-256" },
+        privateKey,
+        policyAttestationMessage(digest, normalizedKeyId),
+      );
+      return {
+        algorithm: REVISION_POLICY_ATTESTATION_ALGORITHM,
+        keyId: normalizedKeyId,
+        signature: bytesToBase64Url(new Uint8Array(signature)),
+      };
+    },
+  };
+}
+
+export function createEcdsaP256PolicyVerifier(
+  publicKeys: ReadonlyMap<string, CryptoKey>,
+): RevisionPolicyEnvelopeVerifier {
+  const trustedKeys = new Map<string, CryptoKey>();
+  for (const [keyId, publicKey] of publicKeys) {
+    const normalizedKeyId = normalizeKeyId(keyId);
+    assertEcdsaP256Key(publicKey, "public", "verify");
+    trustedKeys.set(normalizedKeyId, publicKey);
+  }
+
+  return {
+    async verifyDigest(digest, attestation) {
+      if (attestation.algorithm !== REVISION_POLICY_ATTESTATION_ALGORITHM) {
+        return false;
+      }
+      const keyId = attestation.keyId.trim();
+      const publicKey = trustedKeys.get(keyId);
+      if (!publicKey) return false;
+
+      let signature: Uint8Array;
+      try {
+        signature = base64UrlToBytes(attestation.signature);
+      } catch {
+        return false;
+      }
+
+      return globalThis.crypto.subtle.verify(
+        { name: "ECDSA", hash: "SHA-256" },
+        publicKey,
+        signature,
+        policyAttestationMessage(digest, keyId),
+      );
+    },
+  };
+}
+
 function deepFreeze<T>(value: T): T {
   if (value && typeof value === "object" && !Object.isFrozen(value)) {
     for (const child of Object.values(value as Record<string, unknown>)) {
@@ -234,6 +385,7 @@ function validateTtl(ttlMs: number): number {
 
 export async function createRevisionPolicyEnvelope(
   input: CreateRevisionPolicyEnvelopeInput,
+  signer?: RevisionPolicyEnvelopeSigner,
 ): Promise<RevisionPolicyEnvelope> {
   const createdAtMs = Date.parse(input.createdAt);
   if (!Number.isFinite(createdAtMs)) {
@@ -270,9 +422,24 @@ export async function createRevisionPolicyEnvelope(
     throw new Error("Revision policy envelope snapshotId is required");
   }
 
+  const digest = await digestPayload(payload);
+  let attestation: RevisionPolicyAttestation | undefined;
+  if (signer) {
+    const signed = await signer.signDigest(digest);
+    if (
+      signed.algorithm !== REVISION_POLICY_ATTESTATION_ALGORITHM ||
+      signed.keyId !== signer.keyId ||
+      !/^[A-Za-z0-9_-]+$/u.test(signed.signature)
+    ) {
+      throw new Error("Revision policy signer returned an invalid attestation");
+    }
+    attestation = cloneAttestation(signed);
+  }
+
   const envelope: RevisionPolicyEnvelope = {
     ...payload,
-    digest: await digestPayload(payload),
+    digest,
+    ...(attestation ? { attestation } : {}),
   };
   return deepFreeze(envelope);
 }
@@ -281,6 +448,7 @@ export async function validateRevisionPolicyEnvelope(
   envelope: RevisionPolicyEnvelope,
   manifest: Pick<ReleaseManifest, "projectId" | "revision" | "commit">,
   now: Date = new Date(),
+  verifier?: RevisionPolicyEnvelopeVerifier,
 ): Promise<RevisionPolicyEnvelopeValidation> {
   const errors: string[] = [];
   const evidence = [
@@ -288,6 +456,9 @@ export async function validateRevisionPolicyEnvelope(
     `policy-revision:${envelope.revision}`,
     `release-revision:${manifest.revision}`,
     `policy-expires-at:${envelope.expiresAt}`,
+    ...(envelope.attestation?.keyId
+      ? [`policy-attestation-key:${envelope.attestation.keyId}`]
+      : []),
   ];
 
   if (envelope.version !== REVISION_POLICY_ENVELOPE_VERSION) {
@@ -351,7 +522,8 @@ export async function validateRevisionPolicyEnvelope(
     }
   }
 
-  if (!/^sha256:[0-9a-f]{64}$/.test(envelope.digest)) {
+  const digestWellFormed = /^sha256:[0-9a-f]{64}$/u.test(envelope.digest);
+  if (!digestWellFormed) {
     errors.push("Policy envelope integrity digest is malformed.");
   } else {
     try {
@@ -361,6 +533,28 @@ export async function validateRevisionPolicyEnvelope(
       }
     } catch {
       errors.push("Policy envelope integrity could not be verified.");
+    }
+  }
+
+  const attestation = envelope.attestation;
+  if (!attestation) {
+    errors.push("Policy envelope attestation is required for deployment execution.");
+  } else if (
+    attestation.algorithm !== REVISION_POLICY_ATTESTATION_ALGORITHM ||
+    !attestation.keyId.trim() ||
+    !/^[A-Za-z0-9_-]+$/u.test(attestation.signature)
+  ) {
+    errors.push("Policy envelope attestation is malformed.");
+  } else if (!verifier) {
+    errors.push("Policy envelope attestation verifier is unavailable.");
+  } else if (digestWellFormed) {
+    try {
+      const verified = await verifier.verifyDigest(envelope.digest, attestation);
+      if (!verified) {
+        errors.push("Policy envelope attestation signature is invalid.");
+      }
+    } catch {
+      errors.push("Policy envelope attestation signature could not be verified.");
     }
   }
 

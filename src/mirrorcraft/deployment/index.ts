@@ -1,7 +1,17 @@
 import type { DeploymentTarget } from "@/mirrorcraft/deployment/targets";
+import type { IntegrationRuntime } from "@/mirrorcraft/integrations/types";
 import type { ReleaseManifest } from "@/mirrorcraft/release-manifest";
 
 export type { DeploymentTarget } from "@/mirrorcraft/deployment/targets";
+
+export interface DeploymentProviderExecution {
+  providerId: string;
+  connectionId: string;
+  runtime: IntegrationRuntime;
+  serviceId?: string;
+  executionMode: "runtime-connector";
+  warnings: string[];
+}
 
 export interface DeploymentRequest {
   target: DeploymentTarget;
@@ -10,6 +20,8 @@ export interface DeploymentRequest {
   repository?: string;
   branch?: string;
   customDomain?: string;
+  /** Non-secret provider routing metadata. Credentials remain behind connector/SecretRef boundaries. */
+  provider?: DeploymentProviderExecution;
 }
 
 export interface DeploymentResult {

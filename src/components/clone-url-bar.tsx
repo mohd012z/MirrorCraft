@@ -6,16 +6,30 @@ import Link from "next/link";
 /**
  * URL entry point for the landing page.
  *
- * GitHub Pages is a static export — the browser-side clone work happens in
- * the user's coding agent, so this bar validates the URL and hands over the
- * exact /clone-website command plus the three setup steps instead of
- * pretending to run a server-side clone.
+ * GitHub Pages is a static export — the browser can't fetch the target site,
+ * so "Clone" prepares the exact /clone-website command for the user's coding
+ * agent AND opens the studio in-browser: committed clones (e.g. example.com)
+ * load their real content directly into the editable studio; any other host
+ * opens an honest empty scaffold. The input row is fully tappable (the whole
+ * box focuses the field) and uses a 16px mobile font so phones don't zoom.
  */
 export function CloneUrlBar() {
   const [input, setInput] = useState("");
   const [target, setTarget] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+
+  function hostFrom(value: string): string {
+    const trimmed = value.trim();
+    if (!trimmed) return "";
+    let candidate = trimmed;
+    if (!/^https?:\/\//i.test(candidate)) candidate = `https://${candidate}`;
+    try {
+      return new URL(candidate).host.toLowerCase();
+    } catch {
+      return "";
+    }
+  }
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -50,11 +64,21 @@ export function CloneUrlBar() {
     }
   }
 
+  const studioHref = target ? `/studio?clone=${encodeURIComponent(hostFrom(target))}` : null;
+
   return (
     <div className="mt-8 w-full max-w-xl">
       <form onSubmit={submit} className="flex w-full items-stretch gap-2">
-        <div className="flex min-w-0 flex-1 items-center gap-2 rounded-md border border-border bg-ash/80 px-3 backdrop-blur transition-colors focus-within:border-ember/50">
-          <span className="font-mono text-xs text-iron" aria-hidden>
+        {/* The whole row is the tap target — tapping the prefix focuses the field too. */}
+        <div
+          className="flex min-w-0 flex-1 cursor-text items-center gap-2 rounded-md border border-border bg-ash/80 px-3 backdrop-blur transition-colors focus-within:border-ember/50"
+          onClick={(event) => {
+            const field = event.currentTarget.querySelector("input");
+            field?.focus();
+            field?.select();
+          }}
+        >
+          <span className="font-mono text-sm text-iron" aria-hidden>
             https://
           </span>
           <input
@@ -63,7 +87,8 @@ export function CloneUrlBar() {
             onChange={(event) => setInput(event.target.value)}
             placeholder="paste any permitted website URL"
             aria-label="Website URL to clone"
-            className="h-12 w-full bg-transparent text-sm text-slag outline-none placeholder:text-iron/70"
+            autoComplete="off"
+            className="h-12 w-full bg-transparent text-base text-slag outline-none placeholder:text-iron/70"
           />
         </div>
         <button
@@ -82,13 +107,23 @@ export function CloneUrlBar() {
             <p className="font-mono text-sm text-spark">
               /clone-website <span className="text-slag">{target}</span>
             </p>
-            <button
-              type="button"
-              onClick={copyCommand}
-              className="rounded-md border border-ember/40 px-3 py-1.5 text-xs font-semibold text-spark transition hover:bg-ember/20"
-            >
-              {copied ? "Copied ✓" : "Copy command"}
-            </button>
+            <div className="flex flex-wrap gap-2">
+              {studioHref ? (
+                <Link
+                  href={studioHref}
+                  className="rounded-md bg-ember px-3 py-1.5 text-xs font-semibold text-primary-foreground transition hover:bg-spark"
+                >
+                  Open in studio →
+                </Link>
+              ) : null}
+              <button
+                type="button"
+                onClick={copyCommand}
+                className="rounded-md border border-ember/40 px-3 py-1.5 text-xs font-semibold text-spark transition hover:bg-ember/20"
+              >
+                {copied ? "Copied ✓" : "Copy command"}
+              </button>
+            </div>
           </div>
           <ol className="mt-3 space-y-1 text-xs leading-relaxed text-iron">
             <li>
@@ -102,9 +137,10 @@ export function CloneUrlBar() {
             </li>
           </ol>
           <p className="mt-3 border-t border-ember/20 pt-3 text-[11px] leading-relaxed text-iron/80">
-            Cloning runs in your coding agent with a live browser — this static site
-            prepares the command, it does not fetch the target. Only clone sites you own
-            or have permission to reproduce.
+            “Open in studio” loads a committed clone straight into the editable
+            studio (example.com today). Brand-new hosts open an empty scaffold —
+            real extraction of the target runs in your coding agent, not on this
+            static site. Only clone sites you own or have permission to reproduce.
           </p>
         </div>
       ) : (

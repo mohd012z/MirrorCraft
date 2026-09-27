@@ -28,6 +28,7 @@ import {
 } from "@/app/studio/use-studio-recovery";
 import { STUDIO_EVENTS, onStudioEvent } from "@/app/studio/studio-bus";
 import type { StudioRecoveryRecord } from "@/mirrorcraft/studio-recovery";
+import type { SeededState } from "@/mirrorcraft/clone-seeds";
 
 export interface StudioModel {
   history: StudioHistory;
@@ -42,6 +43,13 @@ export interface StudioModel {
   changeContent: (next: SectionContentState) => void;
   newProject: () => void;
   restoreFrom: (record: StudioRecoveryRecord) => void;
+}
+
+export interface StudioModelInitial {
+  /** Seeded composition/content (e.g. the real clone for ?clone=<host>). */
+  state: SeededState;
+  /** Recovery/project keying for this session. */
+  projectId: string;
 }
 
 export const STUDIO_RECOVERY_PROJECT_ID = "mirrorcraft-studio:home";
@@ -62,15 +70,25 @@ const INITIAL_CONTENT = createSectionContentState(INITIAL_COMPOSITION);
  * The single shared studio page model. Both the Classic view (category
  * sections + bottom tab bar) and the added IDE template view consume the same
  * model shape, so the template is an added option, not a replacement.
+ *
+ * `initial` seeds the model from a clone: a known ?clone=<host> loads the
+ * real cloned content (same text as /demos/<slug>); an unknown host gets an
+ * honest empty scaffold. Omitted → the default starter page.
  */
-export function useStudioModel(): StudioModel {
+export function useStudioModel(initial?: StudioModelInitial): StudioModel {
   const [history, setHistory] = useState<StudioHistory>(() =>
-    createStudioHistory(createStudioSnapshot(INITIAL_COMPOSITION, INITIAL_CONTENT), 100),
+    createStudioHistory(
+      createStudioSnapshot(
+        initial ? initial.state.composition : INITIAL_COMPOSITION,
+        initial ? initial.state.content : INITIAL_CONTENT,
+      ),
+      100,
+    ),
   );
   const [paletteId, setPaletteId] = useState("slate");
 
   const recovery = useStudioRecovery({
-    projectId: STUDIO_RECOVERY_PROJECT_ID,
+    projectId: initial?.projectId ?? STUDIO_RECOVERY_PROJECT_ID,
     history,
     onHistoryChange: setHistory,
   });

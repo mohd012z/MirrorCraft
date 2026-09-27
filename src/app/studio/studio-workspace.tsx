@@ -2,12 +2,14 @@
 
 import { StudioCompositionSurface } from "@/app/studio/studio-composition-surface";
 import { TemplateStudio } from "@/app/studio/template-studio";
-import { useStudioModel } from "@/app/studio/use-studio-model";
+import { useStudioModel, type StudioModelInitial } from "@/app/studio/use-studio-model";
 import { dispatchStudioEvent, STUDIO_EVENTS } from "@/app/studio/studio-bus";
 
 export interface StudioWorkspaceProps {
   /** Which shell renders the shared page model (default: classic). */
   view?: "classic" | "template";
+  /** Seed the model from a clone (?clone=<host>) instead of the starter page. */
+  initial?: StudioModelInitial;
 }
 
 /**
@@ -18,8 +20,11 @@ export interface StudioWorkspaceProps {
  *     inspector · status bar) wrapping the same sections.
  * Switching views keeps the model, so edits survive the round trip.
  */
-export function StudioWorkspace({ view = "classic" }: StudioWorkspaceProps = {}) {
-  const model = useStudioModel();
+export function StudioWorkspace({
+  view = "classic",
+  initial,
+}: StudioWorkspaceProps = {}) {
+  const model = useStudioModel(initial);
 
   if (view === "template") {
     return (

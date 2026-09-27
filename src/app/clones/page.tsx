@@ -79,7 +79,7 @@ export default function ClonesPage() {
                       </span>
                     )}
                     <Link
-                      href="/studio"
+                      href={`/studio?clone=${encodeURIComponent(clone.host)}`}
                       className="inline-flex h-9 items-center rounded-md border border-border px-4 text-sm text-slag transition hover:border-ember/50 hover:text-spark"
                     >
                       Direct edit

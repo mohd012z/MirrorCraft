@@ -1,17 +1,65 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 import { StudioCategoryTabs } from "@/app/studio/studio-category-tabs";
 import { StudioWorkspace } from "@/app/studio/studio-workspace";
+import {
+  createScaffoldState,
+  createSeededState,
+  seedForHost,
+} from "@/mirrorcraft/clone-seeds";
+import type { StudioModelInitial } from "@/app/studio/use-studio-model";
 import {
   dispatchStudioEvent,
   onStudioEvent,
   STUDIO_EVENTS,
 } from "@/app/studio/studio-bus";
 
+function studioInitialForSearch(search: string | null): StudioModelInitial | null {
+  // /studio?clone=example.com  → seed the model from that clone.
+  const clone = new URLSearchParams(search ?? "").get("clone");
+  if (!clone) return null;
+  const seed = seedForHost(clone);
+  if (seed) {
+    // Known committed clone → the real cloned content.
+    return {
+      state: createSeededState(seed),
+      projectId: `mirrorcraft-studio:${seed.pageId}`,
+    };
+  }
+  // Unknown host → honest empty scaffold (no fabricated content).
+  const host = clone
+    .replace(/^https?:\/\//i, "")
+    .replace(/\/.*$/, "")
+    .toLowerCase();
+  return {
+    state: createScaffoldState(host || "new-clone"),
+    projectId: `mirrorcraft-studio:${host || "new-clone"}`,
+  };
+}
+
 export default function StudioPage() {
+  return (
+    <Suspense fallback={<StudioLoading />}>
+      <StudioPageInner />
+    </Suspense>
+  );
+}
+
+function StudioLoading() {
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-[#0a0e1a] text-xs text-white/40">
+      Loading studio…
+    </main>
+  );
+}
+
+function StudioPageInner() {
+  const search = useSearchParams().toString();
+  const initial = studioInitialForSearch(search);
   const [view, setView] = useState<"classic" | "template">("classic");
 
   // The bottom bar "IDE" tab (and the template's "‹ Classic" button) switch views.
@@ -25,7 +73,7 @@ export default function StudioPage() {
   if (view === "template") {
     return (
       <main className="h-[100svh] overflow-hidden bg-[#0a0e1a] text-white">
-        <StudioWorkspace view="template" />
+        <StudioWorkspace view="template" initial={initial ?? undefined} />
       </main>
     );
   }
@@ -89,7 +137,7 @@ export default function StudioPage() {
         </header>
 
         {/* Category sections — navigate from the bottom tab bar */}
-        <StudioWorkspace view="classic" />
+        <StudioWorkspace view="classic" initial={initial ?? undefined} />
       </div>
 
       {/* Bottom tab bar (auto-hides; IDE tab switches to the added template view) */}

@@ -181,6 +181,8 @@ for (const expectedId of [
   "cloudflare-pages",
   "vercel",
   "netlify",
+  "firebase-hosting",
+  "google-cloud-run",
   "supabase",
   "neon",
 ]) {
@@ -191,12 +193,14 @@ const githubPages = providerMatrix.getProviderProfile("github-pages");
 assert.ok(githubPages);
 assert.equal(githubPages.freeTier, "yes");
 assert.equal(githubPages.commercialUse, "restricted");
+assert.equal(githubPages.billingMode, "hard-cap");
 assert.deepEqual(githubPages.runtimes, ["static"]);
 assert.equal(githubPages.limits.siteSizeMb, 1024);
 
 const cloudflare = providerMatrix.getProviderProfile("cloudflare-pages");
 assert.ok(cloudflare);
 assert.equal(cloudflare.freeTier, "yes");
+assert.equal(cloudflare.billingMode, "hard-cap");
 assert.equal(cloudflare.limits.monthlyBuilds, 500);
 assert.equal(cloudflare.limits.maxFilesPerSite, 20_000);
 assert.equal(cloudflare.limits.maxAssetMiB, 25);
@@ -205,13 +209,28 @@ const vercel = providerMatrix.getProviderProfile("vercel");
 assert.ok(vercel);
 assert.equal(vercel.freeTier, "yes");
 assert.equal(vercel.commercialUse, "restricted");
+assert.equal(vercel.billingMode, "hard-cap");
 assert.equal(vercel.limits.edgeRequestsPerMonth, 1_000_000);
 
 const netlify = providerMatrix.getProviderProfile("netlify");
 assert.ok(netlify);
 assert.equal(netlify.freeTier, "yes");
+assert.equal(netlify.billingMode, "hard-cap");
 assert.equal(netlify.limits.monthlyCredits, 300);
 assert.equal(netlify.limits.creditHardLimit, true);
+
+const firebaseHosting = providerMatrix.getProviderProfile("firebase-hosting");
+assert.ok(firebaseHosting);
+assert.equal(firebaseHosting.freeTier, "yes");
+assert.equal(firebaseHosting.billingMode, "hard-cap");
+assert.equal(firebaseHosting.limits.sparkPaymentMethodRequired, false);
+assert.equal(firebaseHosting.limits.hostingStorageGb, 10);
+
+const cloudRun = providerMatrix.getProviderProfile("google-cloud-run");
+assert.ok(cloudRun);
+assert.equal(cloudRun.freeTier, "yes");
+assert.equal(cloudRun.billingMode, "usage-based");
+assert.equal(cloudRun.limits.billingBeyondFreeTier, true);
 
 const supabase = providerMatrix.getProviderProfile("supabase");
 assert.ok(supabase);
@@ -226,8 +245,12 @@ assert.equal(neon.kind, "backend");
 assert.equal(neon.freeTier, "yes");
 assert.ok(neon.capabilities.includes("database"));
 
+const latestEvidenceDay = Date.parse("2026-09-27T00:00:00.000Z");
 for (const provider of providerMatrix.PROVIDER_CATALOG) {
-  assert.equal(provider.evidence.verifiedAt, "2026-09-26");
+  assert.match(provider.evidence.verifiedAt, /^\d{4}-\d{2}-\d{2}$/);
+  const evidenceDay = Date.parse(`${provider.evidence.verifiedAt}T00:00:00.000Z`);
+  assert.ok(Number.isFinite(evidenceDay));
+  assert.ok(evidenceDay <= latestEvidenceDay);
   assert.ok(provider.evidence.source.startsWith("https://"));
   assert.ok(provider.evidence.confidence > 0.5);
 }
@@ -246,6 +269,7 @@ assert.ok(staticPersonalPlan.eligible.some((candidate) => candidate.providerId =
 assert.ok(staticPersonalPlan.eligible.some((candidate) => candidate.providerId === "cloudflare-pages"));
 assert.ok(staticPersonalPlan.eligible.some((candidate) => candidate.providerId === "vercel"));
 assert.ok(staticPersonalPlan.eligible.some((candidate) => candidate.providerId === "netlify"));
+assert.ok(staticPersonalPlan.eligible.some((candidate) => candidate.providerId === "firebase-hosting"));
 assert.ok(staticPersonalPlan.eligible.every((candidate) => candidate.zeroCostEvidenceReady));
 
 const commercialStaticPlan = hostingClassifier.classifyFreeHosting({
@@ -272,6 +296,16 @@ const serverlessCommercialPlan = hostingClassifier.classifyFreeHosting({
 assert.ok(serverlessCommercialPlan.blocked.some((candidate) => candidate.providerId === "github-pages"));
 assert.ok(serverlessCommercialPlan.blocked.some((candidate) => candidate.providerId === "vercel"));
 assert.ok(serverlessCommercialPlan.eligible.some((candidate) => candidate.providerId === "netlify"));
+const blockedCloudRun = serverlessCommercialPlan.blocked.find(
+  (candidate) => candidate.providerId === "google-cloud-run",
+);
+assert.ok(blockedCloudRun);
+assert.equal(blockedCloudRun.zeroCostEvidenceReady, false);
+assert.ok(
+  blockedCloudRun.blockers.some((reason) =>
+    reason.toLowerCase().includes("billable"),
+  ),
+);
 
 const stalePlan = hostingClassifier.classifyFreeHosting({
   runtime: "static",

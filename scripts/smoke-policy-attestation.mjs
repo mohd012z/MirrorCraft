@@ -229,7 +229,7 @@ try {
   assert.equal(publishCalls, 1, "adapter must not run for invalid signature");
   assert.ok(tampered.errors.some((error) => error.toLowerCase().includes("signature")));
 
-  const { attestation: _removed, ...unsignedEnvelope } = envelope;
+  const unsignedEnvelope = { ...envelope, attestation: undefined };
   const unsigned = await router.publish({
     target: "github-pages",
     manifest,

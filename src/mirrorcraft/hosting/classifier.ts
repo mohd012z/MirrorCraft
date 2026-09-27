@@ -1,5 +1,6 @@
 import type { IntegrationCapability, IntegrationRuntime } from "@/mirrorcraft/integrations/types";
 import type {
+  ProviderBillingMode,
   ProviderCommercialUse,
   ProviderFreeTierStatus,
   ProviderProfileKind,
@@ -22,6 +23,7 @@ export interface HostingProviderProfile {
   customDomain: boolean;
   freeTier: ProviderFreeTierStatus;
   commercialUse: ProviderCommercialUse;
+  billingMode: ProviderBillingMode;
   limits: Readonly<Record<string, string | number | boolean>>;
   evidence: HostingProviderEvidence;
   notes: readonly string[];
@@ -43,6 +45,7 @@ export interface FreeHostingCandidate {
   runtimeCompatible: boolean;
   capabilityCompatible: boolean;
   policyEligible: boolean;
+  billingMode: ProviderBillingMode;
   evidenceFreshness: EvidenceFreshness;
   evidenceAgeDays: number | null;
   zeroCostEvidenceReady: boolean;
@@ -145,6 +148,14 @@ function createCandidate(
     blockers.push("Verified free-tier evidence is unavailable for this provider profile.");
   }
 
+  if (provider.billingMode === "usage-based") {
+    blockers.push(
+      "Free-tier usage can become billable after the allowance; guaranteed zero-cost operation is not available.",
+    );
+  } else if (provider.billingMode === "unknown") {
+    blockers.push("Zero-cost billing protection is unknown for this provider profile.");
+  }
+
   if (freshness === "stale") {
     blockers.push(
       `Free-tier evidence is stale (${ageDays ?? "unknown"} day(s) old; maximum ${input.maxEvidenceAgeDays}).`,
@@ -163,6 +174,7 @@ function createCandidate(
 
   const zeroCostEvidenceReady =
     provider.freeTier === "yes" &&
+    provider.billingMode === "hard-cap" &&
     freshness === "fresh" &&
     provider.evidence.source.startsWith("https://") &&
     Number.isFinite(provider.evidence.confidence) &&
@@ -184,6 +196,7 @@ function createCandidate(
     runtimeCompatible,
     capabilityCompatible,
     policyEligible,
+    billingMode: provider.billingMode,
     evidenceFreshness: freshness,
     evidenceAgeDays: ageDays,
     zeroCostEvidenceReady,

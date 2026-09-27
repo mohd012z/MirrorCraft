@@ -8,12 +8,15 @@ export type ProviderProfileId =
   | "cloudflare-pages"
   | "vercel"
   | "netlify"
+  | "firebase-hosting"
+  | "google-cloud-run"
   | "supabase"
   | "neon";
 
 export type ProviderProfileKind = "hosting" | "backend";
 export type ProviderFreeTierStatus = "yes" | "no" | "unknown";
 export type ProviderCommercialUse = "allowed" | "restricted" | "service-dependent";
+export type ProviderBillingMode = "hard-cap" | "usage-based" | "unknown";
 
 export interface ProviderEvidence {
   verifiedAt: string;
@@ -30,12 +33,14 @@ export interface ProviderProfile {
   customDomain: boolean;
   freeTier: ProviderFreeTierStatus;
   commercialUse: ProviderCommercialUse;
+  billingMode: ProviderBillingMode;
   limits: Readonly<Record<string, string | number | boolean>>;
   evidence: ProviderEvidence;
   notes: readonly string[];
 }
 
 const VERIFIED_AT = "2026-09-26";
+const GOOGLE_VERIFIED_AT = "2026-09-27";
 
 export const PROVIDER_CATALOG: readonly ProviderProfile[] = [
   {
@@ -47,6 +52,7 @@ export const PROVIDER_CATALOG: readonly ProviderProfile[] = [
     customDomain: true,
     freeTier: "yes",
     commercialUse: "restricted",
+    billingMode: "hard-cap",
     limits: {
       siteSizeMb: 1024,
       softBandwidthGbPerMonth: 100,
@@ -74,6 +80,7 @@ export const PROVIDER_CATALOG: readonly ProviderProfile[] = [
     customDomain: true,
     freeTier: "yes",
     commercialUse: "service-dependent",
+    billingMode: "hard-cap",
     limits: {
       monthlyBuilds: 500,
       concurrentBuilds: 1,
@@ -101,6 +108,7 @@ export const PROVIDER_CATALOG: readonly ProviderProfile[] = [
     customDomain: true,
     freeTier: "yes",
     commercialUse: "restricted",
+    billingMode: "hard-cap",
     limits: {
       edgeRequestsPerMonth: 1_000_000,
       fastDataTransferGbPerMonth: 100,
@@ -126,6 +134,7 @@ export const PROVIDER_CATALOG: readonly ProviderProfile[] = [
     customDomain: true,
     freeTier: "yes",
     commercialUse: "service-dependent",
+    billingMode: "hard-cap",
     limits: {
       monthlyCredits: 300,
       creditHardLimit: true,
@@ -143,6 +152,60 @@ export const PROVIDER_CATALOG: readonly ProviderProfile[] = [
     ],
   },
   {
+    id: "firebase-hosting",
+    label: "Firebase Hosting",
+    kind: "hosting",
+    runtimes: ["static"],
+    capabilities: ["hosting", "custom-domain"],
+    customDomain: true,
+    freeTier: "yes",
+    commercialUse: "service-dependent",
+    billingMode: "hard-cap",
+    limits: {
+      sparkPaymentMethodRequired: false,
+      hostingStorageGb: 10,
+      hostingDataTransferMbPerDay: 360,
+      customDomainAndSsl: true,
+    },
+    evidence: {
+      verifiedAt: GOOGLE_VERIFIED_AT,
+      source: "https://firebase.google.com/pricing",
+      confidence: 0.99,
+    },
+    notes: [
+      "The Spark plan does not require payment information for no-cost usage.",
+      "Firebase Hosting includes no-cost storage and data-transfer quotas; Spark projects can be stopped rather than billed when no-cost resources are exceeded.",
+      "Commercial and production eligibility must still be checked against the active Firebase project and current service terms.",
+    ],
+  },
+  {
+    id: "google-cloud-run",
+    label: "Google Cloud Run",
+    kind: "hosting",
+    runtimes: ["serverless", "server"],
+    capabilities: ["hosting", "functions", "custom-domain"],
+    customDomain: true,
+    freeTier: "yes",
+    commercialUse: "service-dependent",
+    billingMode: "usage-based",
+    limits: {
+      requestBasedRequestsFreePerMonth: 2_000_000,
+      requestBasedCpuSecondsFreePerMonth: 180_000,
+      requestBasedRamGibSecondsFreePerMonth: 360_000,
+      freeTierAggregatedByBillingAccount: true,
+      billingBeyondFreeTier: true,
+    },
+    evidence: {
+      verifiedAt: GOOGLE_VERIFIED_AT,
+      source: "https://cloud.google.com/run/pricing",
+      confidence: 0.99,
+    },
+    notes: [
+      "Cloud Run has a monthly free tier, but usage beyond the allowance is billable.",
+      "Free-tier usage is aggregated across projects by billing account, so MirrorCraft must not classify Cloud Run as guaranteed zero-cost hosting.",
+    ],
+  },
+  {
     id: "supabase",
     label: "Supabase",
     kind: "backend",
@@ -151,6 +214,7 @@ export const PROVIDER_CATALOG: readonly ProviderProfile[] = [
     customDomain: false,
     freeTier: "yes",
     commercialUse: "service-dependent",
+    billingMode: "unknown",
     limits: {
       freeProjects: 2,
       databaseMbPerProject: 500,
@@ -179,6 +243,7 @@ export const PROVIDER_CATALOG: readonly ProviderProfile[] = [
     customDomain: false,
     freeTier: "yes",
     commercialUse: "service-dependent",
+    billingMode: "unknown",
     limits: {
       storageMbPerProject: 500,
       egressGbPerMonth: 5,

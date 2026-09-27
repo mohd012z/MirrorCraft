@@ -42,15 +42,6 @@ export interface PolicyEnvelope {
   resolutions: readonly RestrictionResolution[];
 }
 
-const SCOPES: readonly RestrictionScope[] = [
-  "access",
-  "edit",
-  "integration",
-  "hosting",
-  "deployment",
-  "publish",
-];
-
 function emptyByScope(): Record<RestrictionScope, Restriction[]> {
   return {
     access: [],
@@ -209,9 +200,14 @@ export function createPolicyEnvelope(
     mutableByScope[restriction.scope].push(restriction);
   }
 
-  const byScope = Object.fromEntries(
-    SCOPES.map((scope) => [scope, [...mutableByScope[scope]]]),
-  ) as Record<RestrictionScope, readonly Restriction[]>;
+  const byScope: RestrictionByScope = {
+    access: [...mutableByScope.access],
+    edit: [...mutableByScope.edit],
+    integration: [...mutableByScope.integration],
+    hosting: [...mutableByScope.hosting],
+    deployment: [...mutableByScope.deployment],
+    publish: [...mutableByScope.publish],
+  };
 
   const seen = new Set<string>();
   const resolutions: RestrictionResolution[] = [];

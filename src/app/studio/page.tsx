@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 
 import { StudioWorkspace } from "@/app/studio/studio-workspace";
 import { dispatchStudioEvent, STUDIO_EVENTS } from "@/app/studio/studio-bus";

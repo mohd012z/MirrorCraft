@@ -63,7 +63,7 @@ export function StudioCompositionSurface() {
   useEffect(() => {
     const offUndo = onStudioEvent(STUDIO_EVENTS.undo, (action) => {
       setHistory((current) => {
-        if (action?.kind === "redo") {
+        if (typeof action === "object" && action !== null && "kind" in action && action.kind === "redo") {
           return canRedoStudioHistory(current) ? redoStudioHistory(current) : current;
         }
         return canUndoStudioHistory(current) ? undoStudioHistory(current) : current;

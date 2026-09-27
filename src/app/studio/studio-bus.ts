@@ -23,7 +23,7 @@ export function dispatchStudioEvent(
 
 export function onStudioEvent(
   name: (typeof STUDIO_EVENTS)[keyof typeof STUDIO_EVENTS],
-  handler: (detail: any) => void,
+  handler: (detail: unknown) => void,
 ) {
   const listener = (event: Event) => handler((event as CustomEvent).detail);
   document.addEventListener(name, listener);

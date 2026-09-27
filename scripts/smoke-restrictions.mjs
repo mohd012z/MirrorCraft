@@ -252,13 +252,34 @@ try {
     createdAt: "2026-09-27T00:00:00.000Z",
     checkedAt: "2026-09-27T09:00:00.000Z",
   };
+  const assessmentKinds = [
+    "access",
+    "hosting",
+    "security",
+    "runtime",
+    "integration",
+    "domain",
+    "publish",
+  ];
+  const assessments = Object.fromEntries(
+    assessmentKinds.map((kind) => [
+      kind,
+      {
+        status: kind === "domain" ? "not-applicable" : "pass",
+        evaluatedAt: "2026-09-27T09:00:00.000Z",
+        evidence: [`fixture:${kind}`],
+      },
+    ]),
+  );
   const validPolicyEnvelope = await revisionPolicy.createRevisionPolicyEnvelope({
     snapshotId: "policy-rev-1",
     manifest,
     createdAt: "2026-09-27T09:00:00.000Z",
+    assessments,
     decision: restrictions.createRestrictionDecision([]),
   });
   assert.ok(Object.isFrozen(validPolicyEnvelope));
+  assert.ok(Object.isFrozen(validPolicyEnvelope.assessments.integration));
   assert.ok(/^sha256:[0-9a-f]{64}$/.test(validPolicyEnvelope.digest));
 
   const blocked = await router.publish({

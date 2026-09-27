@@ -3,8 +3,10 @@ import type { IntegrationRuntime } from "@/mirrorcraft/integrations/types";
 import {
   combineRestrictionDecisions,
   restrictionsFromDeploymentExecution,
+  restrictionsFromPublishDecision,
   type RestrictionDecision,
 } from "@/mirrorcraft/policy/restrictions";
+import { evaluatePublish } from "@/mirrorcraft/publish";
 import type { ReleaseManifest } from "@/mirrorcraft/release-manifest";
 
 export type { DeploymentTarget } from "@/mirrorcraft/deployment/targets";
@@ -27,7 +29,7 @@ export interface DeploymentRequest {
   customDomain?: string;
   /** Non-secret provider routing metadata. Credentials remain behind connector/SecretRef boundaries. */
   provider?: DeploymentProviderExecution;
-  /** Precomputed policy restrictions from access/hosting/publish planning. Router re-checks execution consistency independently. */
+  /** Precomputed policy restrictions from access/hosting/domain planning. Router also derives publish readiness itself. */
   restrictions?: RestrictionDecision;
 }
 
@@ -59,9 +61,19 @@ export class DeploymentRouter {
       target: request.target,
       ...(request.provider ? { provider: request.provider } : {}),
     });
+    const publishRestrictions = restrictionsFromPublishDecision(
+      evaluatePublish(request.manifest),
+    );
     const restrictionDecision = request.restrictions
-      ? combineRestrictionDecisions(executionRestrictions, request.restrictions)
-      : executionRestrictions;
+      ? combineRestrictionDecisions(
+          executionRestrictions,
+          publishRestrictions,
+          request.restrictions,
+        )
+      : combineRestrictionDecisions(
+          executionRestrictions,
+          publishRestrictions,
+        );
 
     if (!restrictionDecision.allowed) {
       return {

@@ -27,6 +27,16 @@ function readDirNames(path: string): string[] {
   }
 }
 
+function readFileNames(path: string): string[] {
+  try {
+    return readdirSync(path, { withFileTypes: true })
+      .filter((entry) => entry.isFile())
+      .map((entry) => entry.name);
+  } catch {
+    return [];
+  }
+}
+
 export function listClones(): CloneEntry[] {
   const root = join(process.cwd(), "docs", "research");
   const hosts = readDirNames(root);
@@ -35,7 +45,7 @@ export function listClones(): CloneEntry[] {
   return hosts
     .map((host) => {
       const dir = join(root, host);
-      const specFiles = readDirNames(join(dir, "components")).filter((f) =>
+      const specFiles = readFileNames(join(dir, "components")).filter((f) =>
         f.endsWith(".md"),
       ).length;
 

@@ -17,7 +17,7 @@ function SectionPreview({ section }: { section: SectionInstance }) {
 
   if (section.hidden) return null;
 
-  const labelClass = "text-xs font-semibold uppercase tracking-[0.16em] text-violet-600";
+  const labelClass = "text-xs font-semibold uppercase tracking-[0.16em] text-teal-600";
   const shellClass = "border-b border-slate-200 px-6 py-8 md:px-10";
 
   if (section.kind === "navbar") {
@@ -37,9 +37,9 @@ function SectionPreview({ section }: { section: SectionInstance }) {
           <div className={labelClass}>{preset.label}</div>
           <h3 className="mt-3 text-3xl font-bold tracking-tight md:text-5xl">Build a page from reusable sections.</h3>
           <p className="mt-4 max-w-xl text-slate-600">The section composer changes the same structure model used by the preview and Web360 projection.</p>
-          <button type="button" className="mt-6 rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white">Primary action</button>
+          <button type="button" className="mt-6 rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white">Primary action</button>
         </div>
-        <div className="aspect-[4/3] rounded-2xl border border-slate-200 bg-gradient-to-br from-violet-100 to-slate-100" />
+        <div className="aspect-[4/3] rounded-2xl border border-slate-200 bg-gradient-to-br from-teal-100 to-slate-100" />
       </section>
     );
   }
@@ -86,7 +86,7 @@ function SectionPreview({ section }: { section: SectionInstance }) {
   if (section.kind === "cta") {
     return (
       <section data-mirrorcraft-section={section.instanceId} className={`${shellClass} flex flex-col justify-between gap-4 bg-slate-950 text-white md:flex-row md:items-center`}>
-        <div><div className="text-xs font-semibold uppercase tracking-[0.16em] text-violet-300">{preset.label}</div><h3 className="mt-2 text-2xl font-bold">Ready to keep building?</h3></div>
+        <div><div className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-300">{preset.label}</div><h3 className="mt-2 text-2xl font-bold">Ready to keep building?</h3></div>
         <button type="button" className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-slate-950">Continue</button>
       </section>
     );

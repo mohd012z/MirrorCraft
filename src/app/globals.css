@@ -56,13 +56,13 @@
 }
 
 :root {
-  /* Forge palette — graphite steel + copper ember */
-  --graphite: #0e1116;
-  --ash: #1a1f27;
-  --ember: #e07a3d;
-  --spark: #f0a35e;
-  --slag: #e8e4dc;
-  --iron: #8b939e;
+  /* Aurora palette — deep indigo night + teal/cyan glow (MirrorCraft identity) */
+  --graphite: #0a0e1a;
+  --ash: #111827;
+  --ember: #2dd4bf;
+  --spark: #7dd3fc;
+  --slag: #eef2f8;
+  --iron: #8b98ad;
 
   --background: var(--graphite);
   --foreground: var(--slag);
@@ -71,30 +71,30 @@
   --popover: var(--ash);
   --popover-foreground: var(--slag);
   --primary: var(--ember);
-  --primary-foreground: #1a1008;
-  --secondary: #252b36;
+  --primary-foreground: #04211d;
+  --secondary: #1b2436;
   --secondary-foreground: var(--slag);
-  --muted: #252b36;
+  --muted: #1b2436;
   --muted-foreground: var(--iron);
-  --accent: #2a3140;
+  --accent: #21304a;
   --accent-foreground: var(--slag);
   --destructive: oklch(0.65 0.2 25);
-  --border: rgb(232 228 220 / 12%);
-  --input: rgb(232 228 220 / 14%);
+  --border: rgb(238 242 248 / 11%);
+  --input: rgb(238 242 248 / 13%);
   --ring: var(--ember);
   --chart-1: var(--ember);
   --chart-2: var(--spark);
   --chart-3: var(--iron);
-  --chart-4: #c45c28;
-  --chart-5: #5a6270;
-  --radius: 0.5rem;
+  --chart-4: #0d9488;
+  --chart-5: #334155;
+  --radius: 0.55rem;
   --sidebar: var(--ash);
   --sidebar-foreground: var(--slag);
   --sidebar-primary: var(--ember);
-  --sidebar-primary-foreground: #1a1008;
-  --sidebar-accent: #252b36;
+  --sidebar-primary-foreground: #04211d;
+  --sidebar-accent: #1b2436;
   --sidebar-accent-foreground: var(--slag);
-  --sidebar-border: rgb(232 228 220 / 12%);
+  --sidebar-border: rgb(238 242 248 / 11%);
   --sidebar-ring: var(--ember);
 }
 
@@ -110,19 +110,20 @@
   }
 }
 
-/* —— MirrorCraft showcase (replaced when you /clone-website) —— */
+/* —— MirrorCraft aurora showcase (replaced when you /clone-website) —— */
 .cf-forge-bg {
   background-color: var(--graphite);
   background-image:
-    radial-gradient(ellipse 90% 60% at 70% 20%, rgb(224 122 61 / 22%), transparent 55%),
-    radial-gradient(ellipse 50% 40% at 10% 80%, rgb(240 163 94 / 10%), transparent 50%),
-    linear-gradient(180deg, #12161d 0%, var(--graphite) 45%, #0a0c10 100%);
+    radial-gradient(ellipse 80% 55% at 75% 12%, rgb(45 212 191 / 16%), transparent 55%),
+    radial-gradient(ellipse 55% 45% at 12% 85%, rgb(125 211 252 / 12%), transparent 50%),
+    radial-gradient(ellipse 45% 40% at 45% 45%, rgb(56 189 248 / 7%), transparent 60%),
+    linear-gradient(180deg, #0d1424 0%, var(--graphite) 45%, #070b14 100%);
 }
 
 .cf-blueprint {
   background-image:
-    linear-gradient(rgb(232 228 220 / 4%) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(232 228 220 / 4%) 1px, transparent 1px);
+    linear-gradient(rgb(238 242 248 / 4%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(238 242 248 / 4%) 1px, transparent 1px);
   background-size: 48px 48px;
   mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, black 20%, transparent 75%);
 }

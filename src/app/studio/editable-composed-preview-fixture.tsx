@@ -10,6 +10,7 @@ const fixture = (
     composition={composition}
     content={content}
     onContentChange={() => undefined}
+    onCompositionChange={() => undefined}
   />
 );
 

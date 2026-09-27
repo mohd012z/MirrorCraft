@@ -83,7 +83,7 @@ export function SectionComposerPanel({
     <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-white">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-300">Section Composer</div>
+          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-300">Section Composer</div>
           <h2 className="mt-1 text-lg font-semibold">Build the page structure</h2>
           <p className="mt-1 text-xs text-white/45">
             Add, reorder, duplicate, hide, replace or remove sections while preserving a WebStructure projection.
@@ -111,7 +111,7 @@ export function SectionComposerPanel({
         <button
           type="button"
           onClick={addSelectedSection}
-          className="rounded-lg bg-violet-500 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-400"
+          className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-400"
         >
           + Add section
         </button>
@@ -132,7 +132,7 @@ export function SectionComposerPanel({
               className={`group grid gap-3 rounded-xl border p-3 transition md:grid-cols-[32px_minmax(0,1fr)_auto] md:items-center ${
                 section.hidden
                   ? "border-white/5 bg-white/[0.02] opacity-50"
-                  : "border-white/10 bg-white/[0.04] hover:border-violet-400/40"
+                  : "border-white/10 bg-white/[0.04] hover:border-teal-400/40"
               }`}
             >
               <div className="flex size-8 cursor-grab items-center justify-center rounded-md border border-white/10 text-white/35 active:cursor-grabbing" title="Drag to reorder">
@@ -141,7 +141,7 @@ export function SectionComposerPanel({
 
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-violet-300">{section.kind}</span>
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-teal-300">{section.kind}</span>
                   <span className="truncate text-sm font-semibold text-white">{preset.label}</span>
                   {section.hidden ? <span className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-white/45">hidden</span> : null}
                 </div>

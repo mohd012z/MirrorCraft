@@ -140,7 +140,7 @@ export function StudioOperationsSurface({
     <section className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.025] p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-300/80">
+          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-300/80">
             Structured Operations
           </div>
           <h2 className="mt-1 text-base font-semibold text-white">
@@ -183,7 +183,7 @@ export function StudioOperationsSurface({
                     onClick={() => setSelectedParameterId(parameter.id)}
                     className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-xs ${
                       inspector.selected?.id === parameter.id
-                        ? "border-violet-300/30 bg-violet-300/10 text-white"
+                        ? "border-teal-300/30 bg-teal-300/10 text-white"
                         : "border-white/5 text-white/60 hover:bg-white/5"
                     }`}
                   >

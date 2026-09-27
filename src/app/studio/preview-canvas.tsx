@@ -267,7 +267,7 @@ export function PreviewCanvas() {
       <div className="rounded-2xl border border-white/10 bg-[#111318] p-3 text-white shadow-xl">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-300">Design Library</div>
+            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-300">Design Library</div>
             <div className="mt-1 text-xs text-white/45">Template · sections · typography · buttons · icons · palette · spacing</div>
           </div>
           <div className="text-xs text-emerald-300">Live · {SECTION_PRESETS.length} section presets</div>
@@ -358,7 +358,7 @@ export function PreviewCanvas() {
 
             {selection ? (
               <>
-                <div className="pointer-events-none absolute z-40 rounded border-2 border-violet-500 bg-violet-500/5" style={{ left: selection.rect.x, top: selection.rect.y, width: selection.rect.width, height: selection.rect.height }} />
+                <div className="pointer-events-none absolute z-40 rounded border-2 border-teal-500 bg-teal-500/5" style={{ left: selection.rect.x, top: selection.rect.y, width: selection.rect.width, height: selection.rect.height }} />
                 {toolbarAnchor ? (
                   <div className="absolute z-50 flex max-w-[calc(100%-16px)] flex-wrap gap-1 rounded-lg border border-slate-700 bg-slate-950 p-1.5 text-xs text-white shadow-xl" style={{ left: toolbarAnchor.x, top: toolbarAnchor.y }}>
                     {buildPreviewActions(GRAPH, selection.descriptor).map((action) => (
@@ -374,9 +374,9 @@ export function PreviewCanvas() {
         <div className="border-t border-white/10 bg-[#0b0d11] p-3">
           {editor ? (
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <span className="min-w-16 text-xs font-semibold uppercase tracking-wide text-violet-300">{editor.kind}</span>
-              <input autoFocus value={editor.value} onChange={(event) => setEditor(updateInlineEditSession(editor, event.target.value))} onKeyDown={(event) => { if (event.key === "Enter") commitEditor(); if (event.key === "Escape") setEditor(null); }} className="min-w-0 flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-violet-400" placeholder={activeAction === "ask-ai" ? "Describe the change while preserving bindings..." : "Edit value"} />
-              <button type="button" onClick={commitEditor} className="rounded-lg bg-violet-500 px-4 py-2 text-sm font-semibold text-white">Apply</button>
+              <span className="min-w-16 text-xs font-semibold uppercase tracking-wide text-teal-300">{editor.kind}</span>
+              <input autoFocus value={editor.value} onChange={(event) => setEditor(updateInlineEditSession(editor, event.target.value))} onKeyDown={(event) => { if (event.key === "Enter") commitEditor(); if (event.key === "Escape") setEditor(null); }} className="min-w-0 flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-teal-400" placeholder={activeAction === "ask-ai" ? "Describe the change while preserving bindings..." : "Edit value"} />
+              <button type="button" onClick={commitEditor} className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white">Apply</button>
               <button type="button" onClick={() => setEditor(null)} className="rounded-lg border border-white/10 px-4 py-2 text-sm text-white/80">Cancel</button>
             </div>
           ) : (

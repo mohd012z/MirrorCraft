@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 
 import { EditableComposedPagePreview } from "@/app/studio/editable-composed-preview";
 import { SectionComposerPanel } from "@/app/studio/section-composer-panel";
@@ -8,10 +8,15 @@ import { StudioHistoryExperience } from "@/app/studio/studio-history-experience"
 import { StudioProjectIOPanel } from "@/app/studio/studio-project-io-panel";
 import { StudioRecoveryPanel } from "@/app/studio/studio-recovery-panel";
 import { useStudioRecovery } from "@/app/studio/use-studio-recovery";
+import { STUDIO_EVENTS, onStudioEvent } from "@/app/studio/studio-bus";
 import {
+  canRedoStudioHistory,
+  canUndoStudioHistory,
   createStudioHistory,
   createStudioSnapshot,
   recordStudioSnapshot,
+  redoStudioHistory,
+  undoStudioHistory,
 } from "@/mirrorcraft/studio-history";
 import {
   createSectionContentState,
@@ -54,6 +59,36 @@ export function StudioCompositionSurface() {
   const composition = history.present.composition;
   const content = history.present.content;
 
+  // Compact quick-bar in the studio header drives this surface directly.
+  useEffect(() => {
+    const offUndo = onStudioEvent(STUDIO_EVENTS.undo, (action) => {
+      setHistory((current) => {
+        if (action?.kind === "redo") {
+          return canRedoStudioHistory(current) ? redoStudioHistory(current) : current;
+        }
+        return canUndoStudioHistory(current) ? undoStudioHistory(current) : current;
+      });
+    });
+    const offIO = onStudioEvent(STUDIO_EVENTS.io, (kind) => {
+      if (kind !== "import" && kind !== "export" && kind !== "load") return;
+      const panel = document.getElementById("project-io");
+      if (!panel) return;
+      const names: Record<string, string> = {
+        import: "Import Project",
+        export: "Export Project",
+        load: "Load Project",
+      };
+      const button = [...panel.querySelectorAll<HTMLButtonElement>("button")].find(
+        (el) => el.textContent?.trim() === names[kind],
+      );
+      button?.click();
+    });
+    return () => {
+      offUndo();
+      offIO();
+    };
+  }, []);
+
   const graph = useMemo(
     () => toSectionContentWebGraph(composition, content),
     [composition, content],
@@ -82,13 +117,25 @@ export function StudioCompositionSurface() {
 
   return (
     <div className="space-y-5">
-      <StudioRecoveryPanel controller={recovery} />
+      {/* Preview-first: the composed page is the first thing you see */}
+      <EditableComposedPagePreview
+        composition={composition}
+        content={content}
+        onContentChange={changeContent}
+        onCompositionChange={changeComposition}
+      />
+      <SectionComposerPanel
+        composition={composition}
+        onCompositionChange={changeComposition}
+      />
+
       <StudioProjectIOPanel
         projectId={STUDIO_RECOVERY_PROJECT_ID}
         history={history}
         onHistoryChange={setHistory}
       />
       <StudioHistoryExperience history={history} onHistoryChange={setHistory} />
+      <StudioRecoveryPanel controller={recovery} />
 
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.025] px-3 py-2 text-xs text-white/50">
         <span>Shared page model</span>
@@ -101,16 +148,6 @@ export function StudioCompositionSurface() {
           <span className="rounded-md border border-white/10 px-2 py-1 text-white/35">⌘/Ctrl+Z · ⇧⌘/Ctrl+Z · Ctrl+Y</span>
         </div>
       </div>
-
-      <EditableComposedPagePreview
-        composition={composition}
-        content={content}
-        onContentChange={changeContent}
-      />
-      <SectionComposerPanel
-        composition={composition}
-        onCompositionChange={changeComposition}
-      />
     </div>
   );
 }

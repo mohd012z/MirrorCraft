@@ -24,10 +24,10 @@ export function StudioRecoveryPanel({
 
   if (controller.status === "available" && controller.record) {
     return (
-      <section className="rounded-xl border border-violet-300/20 bg-violet-300/[0.06] p-4 text-white">
+      <section className="rounded-xl border border-teal-300/20 bg-teal-300/[0.06] p-4 text-white">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-violet-200">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-teal-200">
               Recovery available
             </div>
             <div className="mt-1 text-sm font-semibold text-white/85">
@@ -48,7 +48,7 @@ export function StudioRecoveryPanel({
             <button
               type="button"
               onClick={controller.restore}
-              className="rounded-lg border border-violet-200/20 bg-violet-200/10 px-3 py-2 text-xs font-semibold text-violet-100 transition hover:bg-violet-200/15"
+              className="rounded-lg border border-teal-200/20 bg-teal-200/10 px-3 py-2 text-xs font-semibold text-teal-100 transition hover:bg-teal-200/15"
             >
               Restore draft
             </button>

@@ -87,7 +87,7 @@ export function StudioHistoryTimeline({
                   <button
                     type="button"
                     onClick={() => onRestore(entry.id)}
-                    className="mx-3 mb-3 rounded-md border border-violet-300/15 bg-violet-300/[0.06] px-2 py-1.5 text-[10px] font-semibold text-violet-100/70 transition hover:bg-violet-300/10 hover:text-violet-100"
+                    className="mx-3 mb-3 rounded-md border border-teal-300/15 bg-teal-300/[0.06] px-2 py-1.5 text-[10px] font-semibold text-teal-100/70 transition hover:bg-teal-300/10 hover:text-teal-100"
                   >
                     Restore as new edit
                   </button>

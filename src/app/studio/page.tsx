@@ -4,143 +4,106 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { StudioWorkspace } from "@/app/studio/studio-workspace";
+import { dispatchStudioEvent, STUDIO_EVENTS } from "@/app/studio/studio-bus";
 
-type IOAction = "import" | "export" | "load";
+const QUICK_ACTIONS = [
+  { id: "import", label: "Import", action: "import" as const },
+  { id: "export", label: "Export", action: "export" as const },
+  { id: "load", label: "Load", action: "load" as const },
+];
 
-// The header Import/Export/Load buttons drive the real, tested Project I/O panel
-// (studio-project-io-panel) rather than duplicating its file/blob/history logic.
-const IO_TARGET: Record<IOAction, string> = {
-  import: "Import Project",
-  export: "Export Project",
-  load: "Load Project",
-};
+const HISTORY_ACTIONS = [
+  { id: "undo", label: "Undo" },
+  { id: "redo", label: "Redo" },
+];
 
 export default function StudioPage() {
-  const [panelsOpen, setPanelsOpen] = useState(false);
-
-  function triggerIO(action: IOAction) {
-    const panel = document.getElementById("project-io");
-    if (!panel) return;
-    panel.scrollIntoView({ behavior: "smooth", block: "center" });
-    const button = [...panel.querySelectorAll<HTMLButtonElement>("button")].find(
-      (el) => el.textContent?.trim() === IO_TARGET[action],
-    );
-    // Defer the click so it lands after the scroll settles and the panel is in view.
-    window.setTimeout(() => button?.click(), 350);
-  }
-
   return (
-    <main className="min-h-screen bg-[#080a0e] px-3 py-4 text-white sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-[1600px]">
-        <header className="mb-5 flex flex-col justify-between gap-4 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4 sm:flex-row sm:items-center">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-violet-300">
-                MirrorCraft
+    <main className="min-h-screen bg-[#0a0e1a] px-3 py-4 text-white sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1400px]">
+        {/* Header — brand + compact quickbar */}
+        <header className="mb-4 rounded-2xl border border-teal-300/15 bg-[#101827] px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <Link
+                href="/"
+                className="cf-display text-lg font-semibold tracking-tight"
+              >
+                <span className="text-teal-300">Mirror</span>Craft
+              </Link>
+              <span className="text-white/20">·</span>
+              <div>
+                <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-teal-300">
+                  Studio
+                </div>
+                <h1 className="text-lg font-semibold leading-tight">
+                  Editing Studio
+                </h1>
               </div>
-              <h1 className="mt-1 text-xl font-semibold tracking-tight">Editing Studio</h1>
             </div>
-            {/* Mobile: toggle the Navigator / Inspector panels (hidden on phones otherwise) */}
-            <button
-              type="button"
-              onClick={() => setPanelsOpen((open) => !open)}
-              aria-expanded={panelsOpen}
-              className="rounded-lg border border-white/10 px-3 py-2 text-sm text-white/80 hover:bg-white/5 xl:hidden"
-            >
-              {panelsOpen ? "Close panels" : "Panels"}
-            </button>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            <button
-              type="button"
-              onClick={() => triggerIO("import")}
-              className="h-9 rounded-lg border border-white/10 px-3 text-white/80 hover:bg-white/5 hover:text-white"
-            >
-              Import
-            </button>
-            <button
-              type="button"
-              onClick={() => triggerIO("export")}
-              className="h-9 rounded-lg border border-white/10 px-3 text-white/80 hover:bg-white/5 hover:text-white"
-            >
-              Export
-            </button>
-            <button
-              type="button"
-              onClick={() => triggerIO("load")}
-              className="h-9 rounded-lg border border-white/10 px-3 text-white/80 hover:bg-white/5 hover:text-white"
-            >
-              Load
-            </button>
-            <Link
-              href="/"
-              className="inline-flex h-9 items-center rounded-lg bg-white px-3 font-semibold text-slate-950 hover:bg-white/90"
-            >
-              Home
-            </Link>
-          </div>
-        </header>
 
-        <div className="grid gap-5 xl:grid-cols-[230px_minmax(0,1fr)_280px]">
-          <aside
-            className={`${
-              panelsOpen ? "block" : "hidden"
-            } rounded-2xl border border-white/10 bg-white/[0.03] p-4 xl:block`}
-          >
-            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-white/40">
-              Navigator
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.03] p-1">
+                {QUICK_ACTIONS.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => dispatchStudioEvent(STUDIO_EVENTS.io, item.action)}
+                    className="h-8 rounded-md px-3 text-xs text-white/75 transition hover:bg-white/10 hover:text-white"
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.03] p-1">
+                {HISTORY_ACTIONS.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() =>
+                      dispatchStudioEvent(STUDIO_EVENTS.undo, {
+                        kind: item.id,
+                      })
+                    }
+                    className="h-8 rounded-md px-3 text-xs text-white/75 transition hover:bg-white/10 hover:text-white"
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+              <Link
+                href="/"
+                className="inline-flex h-8 items-center rounded-md bg-teal-400 px-3 text-xs font-semibold text-slate-950 hover:bg-teal-300"
+              >
+                Home
+              </Link>
             </div>
-            <nav className="mt-4 space-y-1 text-sm text-white/70">
-              {["Pages", "Layers", "Components", "Assets", "Content", "Routes", "Functions", "Database"].map((item) => (
+          </div>
+
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/35">
+              Full toolset
+            </span>
+            {["AI", "Map", "360", "Code", "Diff", "Console", "Compile", "History", "Integrations", "Hosting", "Domain", "Security", "Publish"].map(
+              (item) => (
                 <button
                   key={item}
                   type="button"
-                  className="block w-full rounded-lg px-3 py-2 text-left hover:bg-white/5 hover:text-white"
+                  title={`${item} — available in the panels below`}
+                  className="inline-flex h-6 items-center rounded-full border border-white/10 px-2.5 text-[11px] text-white/45 transition hover:border-teal-300/40 hover:bg-white/5 hover:text-white/80"
                 >
                   {item}
                 </button>
-              ))}
-            </nav>
-          </aside>
+              ),
+            )}
+            <span className="ml-auto text-[11px] text-teal-300/80">
+              Direct edit enabled
+            </span>
+          </div>
+        </header>
 
-          <section className="min-w-0">
-            <StudioWorkspace />
-          </section>
-
-          <aside
-            className={`${
-              panelsOpen ? "block" : "hidden"
-            } rounded-2xl border border-white/10 bg-white/[0.03] p-4 xl:block`}
-          >
-            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-white/40">
-              Inspector
-            </div>
-            <div className="mt-4 space-y-2 text-sm text-white/70">
-              {["Content", "Style", "Layout", "Colors", "Gradient", "Responsive", "Behavior", "Access", "Advanced"].map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  className="flex w-full items-center justify-between rounded-lg border border-white/5 px-3 py-2 text-left hover:bg-white/5"
-                >
-                  <span>{item}</span>
-                  <span className="text-white/30">›</span>
-                </button>
-              ))}
-            </div>
-          </aside>
-        </div>
-
-        <footer className="mt-5 flex flex-wrap gap-2 rounded-2xl border border-white/10 bg-white/[0.03] p-2 text-xs text-white/60">
-          {["AI", "Map", "360", "Code", "Diff", "Console", "Compile", "History", "Integrations", "Hosting", "Domain", "Security", "Publish"].map((item) => (
-            <button
-              key={item}
-              type="button"
-              className="rounded-lg px-3 py-2 hover:bg-white/5 hover:text-white"
-            >
-              {item}
-            </button>
-          ))}
-        </footer>
+        {/* Preview-first editing workspace */}
+        <StudioWorkspace />
       </div>
     </main>
   );

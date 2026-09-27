@@ -98,7 +98,7 @@ export function StudioProjectIOPanel({
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-300/80">
+          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-300/80">
             Project I/O
           </div>
           <p className="mt-1 text-sm text-white/55">

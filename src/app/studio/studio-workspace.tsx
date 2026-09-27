@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, type MouseEvent } from "react";
+import { useState } from "react";
 
-import { PreviewCanvas } from "@/app/studio/preview-canvas";
 import { StudioCompositionSurface } from "@/app/studio/studio-composition-surface";
 import { StudioOperationsSurface } from "@/app/studio/studio-operations-surface";
 import { StudioRestrictionSurface } from "@/app/studio/studio-restriction-surface";
+import { PreviewCanvas } from "@/app/studio/preview-canvas";
 import type { CanvasSelection } from "@/mirrorcraft/editing/canvas-bridge";
 import type { PolicyEnvelope } from "@/mirrorcraft/policy/envelope";
 
@@ -13,93 +13,46 @@ export interface StudioWorkspaceProps {
   policyEnvelope?: PolicyEnvelope | null;
 }
 
-function inferNodeKind(nodeId: string): string {
-  if (nodeId.includes("image")) return "asset";
-  if (nodeId.includes("cta")) return "child";
-  if (nodeId === "hero") return "container";
-  return "content";
-}
-
-function selectionFromCanvasClick(
-  event: MouseEvent<HTMLDivElement>,
-): CanvasSelection | null {
-  const target = event.target;
-  if (!(target instanceof Element)) return null;
-
-  const element = target.closest<HTMLElement>("[data-mirrorcraft-node]");
-  if (!element) return null;
-
-  const nodeId = element.dataset.mirrorcraftNode;
-  if (!nodeId) return null;
-
-  const host = event.currentTarget;
-  const rect = element.getBoundingClientRect();
-  const hostRect = host.getBoundingClientRect();
-  const selectionRect = {
-    x: rect.left - hostRect.left,
-    y: rect.top - hostRect.top,
-    width: rect.width,
-    height: rect.height,
-  };
-  const viewport = {
-    width: host.clientWidth,
-    height: host.clientHeight,
-  };
-
-  return {
-    nodeId,
-    kind: inferNodeKind(nodeId),
-    sourcePath: "src/app/studio/preview-canvas.tsx",
-    rect: selectionRect,
-    actions: [],
-    descriptor: {
-      nodeId,
-      tagName: element.tagName.toLowerCase(),
-      text: element.textContent ?? undefined,
-      href:
-        element instanceof HTMLAnchorElement
-          ? element.getAttribute("href") ?? undefined
-          : undefined,
-      attributes: { "data-mirrorcraft-node": nodeId },
-      rect: selectionRect,
-      viewport,
-    },
-  };
-}
-
+/**
+ * Preview-first editing workspace:
+ *   1. The shared page model — project I/O, history, composed preview with
+ *      the in-preview quick bar, and the section composer (real editing).
+ *   2. Structured operations / restrictions (inspector, hosting, publish).
+ *   3. A collapsible decorative design-system canvas (template playground).
+ */
 export function StudioWorkspace({
   policyEnvelope = null,
 }: StudioWorkspaceProps = {}) {
-  const [selection, setSelection] = useState<CanvasSelection | null>(null);
+  const [showDesignSystem, setShowDesignSystem] = useState(false);
+  const selection = null as CanvasSelection | null;
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex gap-1 rounded-lg border border-white/10 bg-white/[0.03] p-1 text-xs text-white/60">
-          {["Preview", "Design", "Original", "Diff", "Responsive", "Inspect"].map((item, index) => (
-            <button
-              key={item}
-              type="button"
-              className={`rounded-md px-3 py-1.5 ${index === 1 ? "bg-white/10 text-white" : "hover:text-white"}`}
-            >
-              {item}
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-2 text-xs">
-          <span className="text-emerald-300">Direct edit enabled</span>
-          <span className="rounded-md border border-white/10 px-2 py-1 text-white/45">
-            Content-aware Web360
-          </span>
-        </div>
-      </div>
-
-      <div onClickCapture={(event) => setSelection(selectionFromCanvasClick(event))}>
-        <PreviewCanvas />
-      </div>
+    <div className="space-y-4">
       <StudioCompositionSurface />
       <StudioOperationsSurface selection={selection} />
       <StudioRestrictionSurface envelope={policyEnvelope} />
+
+      <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-3">
+        <button
+          type="button"
+          onClick={() => setShowDesignSystem((open) => !open)}
+          aria-expanded={showDesignSystem}
+          className="flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-xs text-white/60 hover:bg-white/5 hover:text-white"
+        >
+          <span className="font-semibold uppercase tracking-[0.16em]">
+            Design system canvas
+          </span>
+          <span>{showDesignSystem ? "Hide" : "Show"}</span>
+        </button>
+        <p className="mt-1 px-2 text-[11px] text-white/35">
+          Template · typography · buttons · palette playground (decorative)
+        </p>
+        {showDesignSystem ? (
+          <div className="mt-3">
+            <PreviewCanvas />
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

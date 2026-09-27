@@ -77,6 +77,9 @@ const edgeRoute = classify([
 ]);
 assert.equal(edgeRoute.analysis.apiRoutes, 1);
 assert.equal(edgeRoute.analysis.edgeRuntime, true);
+assert.equal(edgeRoute.analysis.edgeRuntimeFiles, 1);
+assert.equal(edgeRoute.analysis.nodeRuntimeFiles, 0);
+assert.equal(edgeRoute.analysis.mixedRuntime, false);
 assert.ok(
   edgeRoute.analysis.evidence.some((entry) => entry.kind === "edge-runtime"),
 );
@@ -96,6 +99,74 @@ for (const target of ["github-pages", "firebase-hosting"]) {
     `Expected explicit edge runtime to block ${target}`,
   );
 }
+
+const inheritedEdgeRoute = classify([
+  {
+    path: "app/layout.tsx",
+    content:
+      "export const runtime = 'edge'; export default function Layout({ children }){ return children; }",
+  },
+  {
+    path: "app/api/inherited/route.ts",
+    content: "export async function GET(){ return new Response('inherited-edge'); }",
+  },
+]);
+assert.equal(inheritedEdgeRoute.analysis.edgeRuntime, true);
+assert.equal(inheritedEdgeRoute.analysis.edgeRuntimeFiles, 1);
+assert.equal(inheritedEdgeRoute.analysis.nodeRuntimeFiles, 0);
+assert.equal(inheritedEdgeRoute.analysis.mixedRuntime, false);
+assert.equal(inheritedEdgeRoute.runtime, "edge");
+
+const mixedRuntime = classify([
+  {
+    path: "app/api/edge/route.ts",
+    content:
+      "export const runtime = 'edge'; export async function GET(){ return new Response('edge'); }",
+  },
+  {
+    path: "app/api/node/route.ts",
+    content: "export async function GET(){ return new Response('node'); }",
+  },
+]);
+assert.equal(mixedRuntime.analysis.edgeRuntime, true);
+assert.equal(mixedRuntime.analysis.edgeRuntimeFiles, 1);
+assert.equal(mixedRuntime.analysis.nodeRuntimeFiles, 1);
+assert.equal(mixedRuntime.analysis.mixedRuntime, true);
+assert.equal(mixedRuntime.recommendation.profile, "hybrid");
+assert.equal(mixedRuntime.runtime, "serverless");
+for (const target of ["vercel", "netlify"]) {
+  assert.ok(
+    mixedRuntime.recommendation.compatibleTargets.includes(target),
+    `Expected mixed runtime compatibility for ${target}`,
+  );
+}
+for (const target of ["cloudflare-pages", "google-cloud-run", "github-pages"]) {
+  assert.ok(
+    !mixedRuntime.recommendation.compatibleTargets.includes(target),
+    `Expected mixed runtime to avoid ${target}`,
+  );
+}
+
+const cacheComponentsEdgeConflict = classify([
+  {
+    path: "next.config.ts",
+    content:
+      "const nextConfig = { cacheComponents: true }; export default nextConfig;",
+  },
+  {
+    path: "app/api/edge/route.ts",
+    content:
+      "export const runtime = 'edge'; export async function GET(){ return new Response('edge'); }",
+  },
+]);
+assert.equal(cacheComponentsEdgeConflict.analysis.cacheComponents, true);
+assert.ok(
+  cacheComponentsEdgeConflict.analysis.runtimeConflicts.includes(
+    "cache-components-edge-runtime",
+  ),
+);
+assert.equal(cacheComponentsEdgeConflict.recommendation.profile, "artifact-only");
+assert.equal(cacheComponentsEdgeConflict.runtime, "artifact-only");
 
 const browserSupabase = classify([
   {

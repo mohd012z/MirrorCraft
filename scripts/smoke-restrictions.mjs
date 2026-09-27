@@ -249,6 +249,21 @@ try {
     createdAt: "2026-09-27T00:00:00.000Z",
     checkedAt: "2026-09-27T09:00:00.000Z",
   };
+  const validPolicyEnvelope = {
+    version: 1,
+    snapshotId: "policy-rev-1",
+    projectId: manifest.projectId,
+    revision: manifest.revision,
+    commit: manifest.commit,
+    createdAt: "2026-09-27T09:00:00.000Z",
+    digest: "sha256:fixture",
+    decision: {
+      allowed: true,
+      blockers: [],
+      warnings: [],
+      restrictions: [],
+    },
+  };
 
   const blocked = await router.publish({
     target: "github-pages",
@@ -321,6 +336,7 @@ try {
     artifactPath: "out",
     provider,
     connection,
+    policyEnvelope: validPolicyEnvelope,
   });
   assert.equal(published.status, "published");
   assert.equal(publishCalls, 1);

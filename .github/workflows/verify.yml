@@ -65,7 +65,16 @@ jobs:
         run: npm run smoke:lifecycle
 
       - name: Build
-        run: npm run build
+        # Retry: next/font/google + Turbopack intermittently fails font import-map
+        # resolution on Next 16.3 (vercel/next.js#97344); clearing .next between
+        # attempts avoids reusing the stale Turbopack font state.
+        run: |
+          set -e
+          for attempt in 1 2 3; do
+            npm run build && break
+            [ "$attempt" = "3" ] && exit 1
+            rm -rf .next
+          done
 
       - name: Studio Playwright smoke
         run: npm run smoke:studio

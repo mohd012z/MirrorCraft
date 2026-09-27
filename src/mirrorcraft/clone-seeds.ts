@@ -62,7 +62,41 @@ export const EXAMPLE_SEED: CloneSeed = {
   },
 };
 
-export const CLONE_SEEDS: CloneSeed[] = [EXAMPLE_SEED];
+/**
+ * v0.app (Vercel) — light-theme marketing page. Maps onto navbar + centered
+ * hero (the prompt box) + a features grid (template gallery) + CTA + footer.
+ */
+export const V0_SEED: CloneSeed = {
+  pageId: "v0-app",
+  host: "v0.app",
+  url: "https://v0.app/",
+  demoSlug: "v0-app",
+  presetIds: ["navbar-simple", "hero-centered", "features-grid", "cta-split", "footer-columns"],
+  overrides: {
+    [nodeId("v0-app", "navbar-simple", "brand")]: "v0",
+    [nodeId("v0-app", "navbar-simple", "links")]: "New Chat · Templates ▾",
+    [nodeId("v0-app", "navbar-simple", "primaryAction")]: "Sign Up",
+    [nodeId("v0-app", "hero-centered", "eyebrow")]: "v0 by Vercel",
+    [nodeId("v0-app", "hero-centered", "heading")]: "What do you want to create?",
+    [nodeId("v0-app", "hero-centered", "copy")]:
+      "Ask v0 to build… · v0 Max — Contact Form · Image Editor · Mini Game · Finance Calculator",
+    [nodeId("v0-app", "hero-centered", "actions")]: "Start with a template",
+    [nodeId("v0-app", "hero-centered", "media")]: "",
+    [nodeId("v0-app", "features-grid", "heading")]: "Start with a template",
+    [nodeId("v0-app", "features-grid", "copy")]: "Apps and Games · Landing Pages · Components · Dashboards · Browse all",
+    [nodeId("v0-app", "features-grid", "items")]:
+      "Image Generation Playground (6.6K · 737) · Brillance SaaS Landing Page (14.5K · 2.1K) · 3D Gallery Photography Template (3.5K · 882) · Optimus — the AI platform to build and ship (9.3K · 1.5K)",
+    [nodeId("v0-app", "cta-split", "heading")]: "Start building with v0",
+    [nodeId("v0-app", "cta-split", "copy")]: "Go from idea to production in seconds with smart, secure infrastructure",
+    [nodeId("v0-app", "cta-split", "actions")]: "Get Started",
+    [nodeId("v0-app", "footer-columns", "brand")]: "v0",
+    [nodeId("v0-app", "footer-columns", "linkGroups")]: "Templates · Enterprise · Pricing · iOS · Students · FAQ",
+    [nodeId("v0-app", "footer-columns", "social")]: "",
+    [nodeId("v0-app", "footer-columns", "legal")]: "← back to clone gallery",
+  },
+};
+
+export const CLONE_SEEDS: CloneSeed[] = [EXAMPLE_SEED, V0_SEED];
 
 /** Normalize a host/url-ish value and match it against the known seeds. */
 export function seedForHost(value: string | null | undefined): CloneSeed | null {

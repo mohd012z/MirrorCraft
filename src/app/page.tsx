@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { CloneUrlBar } from "@/components/clone-url-bar";
+import { PipelineSection } from "@/components/pipeline-section";
 import { listClones } from "@/mirrorcraft/clones-registry";
 
 const REPO = "https://github.com/mohd012z/MirrorCraft";
@@ -107,24 +108,26 @@ export default function Home() {
         </section>
       ) : null}
 
-      {/* Pipeline — single horizontal strip instead of stacked sections */}
+      {/* Pipeline — animated: comet travels the track, nodes ignite in turn */}
       <section className="relative border-t border-border/70 px-6 py-16 md:px-10">
         <div className="mx-auto max-w-6xl">
-          <h2 className="cf-display text-2xl font-bold text-slag">One command, full pipeline</h2>
-          <ol className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              { step: "01", t: "Inspect", d: "Screenshots, tokens, hover/scroll/responsive sweeps." },
-              { step: "02", t: "Specify", d: "Every section gets a written spec with real CSS values." },
-              { step: "03", t: "Build", d: "Parallel agents assemble clean Next.js components." },
-              { step: "04", t: "Edit", d: "Open the studio to tweak any part directly." },
-            ].map((item) => (
-              <li key={item.step} className="rounded-xl border border-border bg-ash/40 p-5">
-                <p className="font-mono text-xs text-ember">{item.step}</p>
-                <h3 className="cf-display mt-2 text-lg font-semibold text-slag">{item.t}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-iron">{item.d}</p>
-              </li>
-            ))}
-          </ol>
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="cf-display text-2xl font-bold text-slag md:text-3xl">
+                One command, full pipeline
+              </h2>
+              <p className="mt-2 max-w-xl text-sm leading-relaxed text-iron md:text-base">
+                The <code className="text-spark">/clone-website</code> skill walks
+                the page like a foreman — inspect, specify, dispatch builders.
+              </p>
+            </div>
+            <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-iron">
+              mirrorcraft://pipeline
+            </span>
+          </div>
+          <div className="mt-10">
+            <PipelineSection />
+          </div>
           <p className="mt-8 max-w-2xl text-sm leading-relaxed text-iron">
             Works with the agents you already use — Cursor, Claude Code, Codex,
             Copilot, Windsurf, OpenCode, Gemini CLI, Aider.{" "}

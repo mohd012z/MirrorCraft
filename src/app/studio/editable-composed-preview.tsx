@@ -46,11 +46,15 @@ export function EditableComposedPagePreview({
   content,
   onContentChange,
   onCompositionChange,
+  paletteId,
+  onPaletteChange,
 }: {
   composition: PageComposition;
   content: SectionContentState;
   onContentChange: (next: SectionContentState) => void;
   onCompositionChange: (next: PageComposition) => void;
+  paletteId: string;
+  onPaletteChange: (id: string) => void;
 }) {
   const [selection, setSelection] = useState<{
     instanceId: string;
@@ -59,7 +63,6 @@ export function EditableComposedPagePreview({
   } | null>(null);
   const [draft, setDraft] = useState("");
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
-  const [paletteId, setPaletteId] = useState("slate");
   const [alignId, setAlignId] = useState<AlignId>("left");
   const [headingId, setHeadingId] = useState<string>("L");
 
@@ -120,7 +123,7 @@ export function EditableComposedPagePreview({
           headingId={headingId}
           alignId={alignId}
           sectionCount={composition.sections.length}
-          onPalette={setPaletteId}
+          onPalette={onPaletteChange}
           onCycleHeading={cycleHeading}
           onCycleAlign={cycleAlign}
           onAddSection={(presetId) => {
@@ -141,6 +144,12 @@ export function EditableComposedPagePreview({
         />
       </div>
 
+      {selection ? (
+        <div className="flex items-center justify-between gap-4 text-xs text-white/60">
+          <span>Selected element — {selection.label}</span>
+          <span>Enter to apply · Esc to cancel</span>
+        </div>
+      ) : null}
       <div
         className="max-h-[760px] overflow-auto rounded-xl bg-slate-50 text-slate-950 shadow-2xl"
         style={{ "--mc-accent": palette.accent, textAlign: alignId } as React.CSSProperties}
@@ -156,34 +165,34 @@ export function EditableComposedPagePreview({
             onSelectSlot={selectSlot}
           />
         ))}
-      </div>
 
-      {selection ? (
-        <div className="mt-3 flex flex-col gap-2 rounded-xl border border-teal-400/25 bg-teal-400/5 p-3 sm:flex-row sm:items-center">
-          <div className="min-w-36">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-teal-300">
-              Direct edit
+        {selection ? (
+          <div className="m-4 flex flex-col gap-2 rounded-xl border border-teal-400/40 bg-white p-3 text-slate-950 shadow-lg sm:flex-row sm:items-center">
+            <div className="min-w-36">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-teal-600">
+                Direct edit
+              </div>
+              <div className="mt-1 truncate text-xs text-slate-500">{selection.label}</div>
             </div>
-            <div className="mt-1 truncate text-xs text-white/50">{selection.label}</div>
+            <input
+              autoFocus
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") applyDraft();
+                if (event.key === "Escape") setSelection(null);
+              }}
+              className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-teal-500"
+            />
+            <button type="button" onClick={applyDraft} className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-500">
+              Apply
+            </button>
+            <button type="button" onClick={() => setSelection(null)} className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">
+              Cancel
+            </button>
           </div>
-          <input
-            autoFocus
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") applyDraft();
-              if (event.key === "Escape") setSelection(null);
-            }}
-            className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none focus:border-teal-400"
-          />
-          <button type="button" onClick={applyDraft} className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-400">
-            Apply
-          </button>
-          <button type="button" onClick={() => setSelection(null)} className="rounded-lg border border-white/10 px-4 py-2 text-sm text-white/70 hover:bg-white/5">
-            Cancel
-          </button>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
     </section>
   );
 }

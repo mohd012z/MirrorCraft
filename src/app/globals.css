@@ -200,7 +200,158 @@
 @media (prefers-reduced-motion: reduce) {
   .cf-rise,
   .cf-ember-glow,
-  .cf-scan-line {
+  .cf-scan-line,
+  .mc-pipeline-comet {
     animation: none !important;
   }
+}
+
+/* —— Animated pipeline (landing "One command, full pipeline") —— */
+@keyframes mc-comet {
+  0% {
+    left: 0%;
+    opacity: 0;
+  }
+  6% {
+    opacity: 1;
+  }
+  94% {
+    opacity: 1;
+  }
+  100% {
+    left: calc(100% - 6px);
+    opacity: 0;
+  }
+}
+
+@keyframes mc-node-ignite {
+  0% {
+    transform: scale(1.18);
+    box-shadow: 0 0 0 9px rgb(45 212 191 / 22%);
+  }
+  30% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgb(45 212 191 / 0%);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgb(45 212 191 / 0%);
+  }
+}
+
+@keyframes mc-track-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.mc-pipeline {
+  --mc-cycle: 7.2s;
+}
+
+.mc-pipeline-track {
+  position: absolute;
+  left: 12.5%;
+  right: 12.5%;
+  top: 29px;
+  height: 2px;
+  border-radius: 999px;
+  background: rgb(238 242 248 / 10%);
+  overflow: visible;
+}
+
+.mc-pipeline-track::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--ember), var(--spark));
+  transform-origin: left center;
+  transform: scaleX(0);
+  opacity: 0.85;
+}
+
+.mc-pipeline-live .mc-pipeline-track::after {
+  animation: mc-track-fill var(--mc-cycle) linear infinite;
+}
+
+.mc-pipeline-comet {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 14px;
+  height: 14px;
+  margin-top: -7px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 35% 35%, #eafffb, var(--spark) 55%, var(--ember));
+  box-shadow:
+    0 0 14px 4px rgb(125 211 252 / 65%),
+    0 0 40px 10px rgb(45 212 191 / 30%);
+  opacity: 0;
+}
+
+.mc-pipeline-live .mc-pipeline-comet {
+  animation: mc-comet var(--mc-cycle) linear infinite;
+}
+
+.mc-step-node {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 999px;
+  border: 1px solid rgb(45 212 191 / 35%);
+  background:
+    radial-gradient(circle at 30% 25%, rgb(45 212 191 / 18%), transparent 60%),
+    var(--ash);
+}
+
+.mc-pipeline-live .mc-step-node {
+  animation: mc-node-ignite var(--mc-cycle) ease-in-out infinite;
+  animation-delay: var(--mc-node-delay, 0ms);
+}
+
+.mc-step-node-core {
+  font-size: 20px;
+  line-height: 1;
+  color: var(--ember);
+  text-shadow: 0 0 12px rgb(45 212 191 / 55%);
+}
+
+.mc-step-index {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ember);
+  opacity: 0.85;
+  letter-spacing: 0.08em;
+}
+
+.mc-pipeline-card {
+  position: relative;
+  border-radius: 14px;
+  border: 1px solid rgb(238 242 248 / 10%);
+  background:
+    linear-gradient(180deg, rgb(17 24 39 / 85%), rgb(17 24 39 / 55%));
+  padding: 22px;
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.25s ease;
+}
+
+.mc-pipeline-live .mc-pipeline-card {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: var(--mc-delay, 0ms);
+}
+
+.mc-pipeline-card:hover {
+  border-color: rgb(45 212 191 / 45%);
 }

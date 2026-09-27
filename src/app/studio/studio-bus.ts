@@ -11,6 +11,7 @@ export const STUDIO_EVENTS = {
   redo: "mirrorcraft:studio-redo",
   io: "mirrorcraft:studio-io", // detail: "import" | "export" | "load"
   selectSection: "mirrorcraft:studio-select-section", // detail: { id }
+  expandDesign: "mirrorcraft:studio-expand-design",
 } as const;
 
 export function dispatchStudioEvent(

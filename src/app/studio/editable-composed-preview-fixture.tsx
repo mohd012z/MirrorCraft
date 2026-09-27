@@ -11,6 +11,8 @@ const fixture = (
     content={content}
     onContentChange={() => undefined}
     onCompositionChange={() => undefined}
+    paletteId="slate"
+    onPaletteChange={() => undefined}
   />
 );
 

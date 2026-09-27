@@ -68,6 +68,35 @@ assert.ok(
   ),
 );
 
+const edgeRoute = classify([
+  {
+    path: "app/api/edge/route.ts",
+    content:
+      "export const runtime = 'edge'; export async function GET(){ return new Response('edge'); }",
+  },
+]);
+assert.equal(edgeRoute.analysis.apiRoutes, 1);
+assert.equal(edgeRoute.analysis.edgeRuntime, true);
+assert.ok(
+  edgeRoute.analysis.evidence.some((entry) => entry.kind === "edge-runtime"),
+);
+assert.equal(edgeRoute.recommendation.profile, "server-runtime");
+assert.equal(edgeRoute.runtime, "edge");
+for (const target of ["cloudflare-pages", "vercel", "netlify"]) {
+  assert.ok(
+    edgeRoute.recommendation.compatibleTargets.includes(target),
+    `Expected edge deployment compatibility for ${target}`,
+  );
+}
+for (const target of ["github-pages", "firebase-hosting"]) {
+  assert.ok(
+    edgeRoute.recommendation.incompatibleTargets.some(
+      (entry) => entry.target === target,
+    ),
+    `Expected explicit edge runtime to block ${target}`,
+  );
+}
+
 const browserSupabase = classify([
   {
     path: "app/page.tsx",

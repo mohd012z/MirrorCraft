@@ -1,4 +1,5 @@
 import type {
+  DeploymentPolicyEnvelope,
   DeploymentProviderExecution,
   DeploymentRequest,
 } from "@/mirrorcraft/deployment";
@@ -57,6 +58,7 @@ export interface BuildDeploymentRequestOptions {
   branch?: string;
   connection?: IntegrationConnectionSummary;
   domainPlan?: DomainPlan;
+  policyEnvelope?: DeploymentPolicyEnvelope;
   restrictions?: RestrictionDecision;
 }
 
@@ -182,6 +184,7 @@ export function buildDeploymentRequest(
     provider,
     ...(options.connection ? { connection: options.connection } : {}),
     ...(options.domainPlan ? { domainPlan: options.domainPlan } : {}),
+    ...(options.policyEnvelope ? { policyEnvelope: options.policyEnvelope } : {}),
     ...(options.restrictions ? { restrictions: options.restrictions } : {}),
   };
 }

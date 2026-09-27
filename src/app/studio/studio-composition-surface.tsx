@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { EditableComposedPagePreview } from "@/app/studio/editable-composed-preview";
 import { SectionComposerPanel } from "@/app/studio/section-composer-panel";
 import { StudioHistoryExperience } from "@/app/studio/studio-history-experience";
+import { StudioProjectIOPanel } from "@/app/studio/studio-project-io-panel";
 import { StudioRecoveryPanel } from "@/app/studio/studio-recovery-panel";
 import { useStudioRecovery } from "@/app/studio/use-studio-recovery";
 import {
@@ -82,6 +83,11 @@ export function StudioCompositionSurface() {
   return (
     <div className="space-y-5">
       <StudioRecoveryPanel controller={recovery} />
+      <StudioProjectIOPanel
+        projectId={STUDIO_RECOVERY_PROJECT_ID}
+        history={history}
+        onHistoryChange={setHistory}
+      />
       <StudioHistoryExperience history={history} onHistoryChange={setHistory} />
 
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.025] px-3 py-2 text-xs text-white/50">

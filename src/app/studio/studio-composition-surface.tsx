@@ -16,11 +16,20 @@ import { STUDIO_RECOVERY_PROJECT_ID, type StudioModel } from "@/app/studio/use-s
 
 /**
  * Classic studio view: the five category sections (Page · Sections · HTML ·
- * Design · Project) navigated from the auto-hiding bottom tab bar. The IDE
- * template is a separate, added view — this one is untouched by it. Both views
- * read/write the same shared page model passed in as `model`.
+ * Design · Project) navigated from the auto-hiding bottom tab bar.
+ *
+ * `compact` (used inside the IDE template's live canvas) renders only the
+ * Page preview + collapsible design canvas — one preview to edit everything;
+ * the other categories live in the bottom-bar drawers (Code / History /
+ * Project) and the quick bar / left navigator.
  */
-export function StudioCompositionSurface({ model }: { model: StudioModel }) {
+export function StudioCompositionSurface({
+  model,
+  compact = false,
+}: {
+  model: StudioModel;
+  compact?: boolean;
+}) {
   const {
     history,
     composition,
@@ -74,28 +83,32 @@ export function StudioCompositionSurface({ model }: { model: StudioModel }) {
         />
       </div>
 
-      {/* Category: Sections — add / reorder / remove */}
-      <div id="sections-edit" className="scroll-mt-6">
-        <CategoryLabel
-          index="02"
-          title="Sections"
-          subtitle="Add, reorder, duplicate, hide or remove sections"
-        />
-        <SectionComposerPanel
-          composition={composition}
-          onCompositionChange={changeComposition}
-        />
-      </div>
+      {/* Category: Sections — add / reorder / remove (docked drawer in the IDE) */}
+      {!compact ? (
+        <div id="sections-edit" className="scroll-mt-6">
+          <CategoryLabel
+            index="02"
+            title="Sections"
+            subtitle="Add, reorder, duplicate, hide or remove sections"
+          />
+          <SectionComposerPanel
+            composition={composition}
+            onCompositionChange={changeComposition}
+          />
+        </div>
+      ) : null}
 
-      {/* Category: HTML — direct markup editing */}
-      <div id="html-edit" className="scroll-mt-6">
-        <CategoryLabel
-          index="03"
-          title="HTML"
-          subtitle="Edit the page markup directly · live sandboxed preview"
-        />
-        <HtmlEditPanel composition={composition} content={content} paletteId={paletteId} />
-      </div>
+      {/* Category: HTML — direct markup editing (docked drawer in the IDE) */}
+      {!compact ? (
+        <div id="html-edit" className="scroll-mt-6">
+          <CategoryLabel
+            index="03"
+            title="HTML"
+            subtitle="Edit the page markup directly · live sandboxed preview"
+          />
+          <HtmlEditPanel composition={composition} content={content} paletteId={paletteId} />
+        </div>
+      ) : null}
 
       {/* Category: Design — palette · typography (decorative canvas) */}
       <div id="design-edit" className="scroll-mt-6">
@@ -107,8 +120,9 @@ export function StudioCompositionSurface({ model }: { model: StudioModel }) {
         <StudioDesignSurface />
       </div>
 
-      {/* Category: Project — I/O · history · recovery · publish gates */}
-      <div id="project-edit" className="scroll-mt-6">
+      {/* Category: Project — I/O · history · recovery · publish gates (docked drawer in the IDE) */}
+      {!compact ? (
+        <div id="project-edit" className="scroll-mt-6">
         <CategoryLabel
           index="05"
           title="Project"
@@ -144,7 +158,8 @@ export function StudioCompositionSurface({ model }: { model: StudioModel }) {
             </span>
           </div>
         </div>
-      </div>
+        </div>
+      ) : null}
 
       {/* Toast (raised by the template view's publish gate / inspector) */}
       {toast ? (
@@ -213,7 +228,7 @@ function StudioDesignSurface() {
 
 /* ---------- Project category: compile gate (keeps the "Compile" action honest) ---------- */
 
-function StudioCompileBar() {
+export function StudioCompileBar() {
   const [status, setStatus] = useState("Not compiled yet");
   function compile() {
     setStatus(

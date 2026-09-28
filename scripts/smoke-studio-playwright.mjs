@@ -50,6 +50,11 @@ try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   await page.goto(`${BASE_URL}/studio`, { waitUntil: "networkidle" });
 
+  // The studio now defaults to the compact IDE (one preview + docked drawers).
+  // The category panels live in the preserved List view — switch to it first.
+  await page.getByRole("button", { name: /List view/ }).first().click();
+  await page.getByRole("heading", { name: "Editing Studio" }).waitFor({ state: "visible" });
+
   assert.equal(await page.getByRole("heading", { name: "Editing Studio" }).isVisible(), true);
 
   const projectIO = page.locator("section#project-io");

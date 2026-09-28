@@ -17,6 +17,7 @@ export const STUDIO_EVENTS = {
   publish: "mirrorcraft:studio-publish", // detail: { compiled: boolean }
   toast: "mirrorcraft:studio-toast", // detail: { message: string }
   view: "mirrorcraft:studio-view", // detail: "classic" | "template"
+  drawer: "mirrorcraft:studio-drawer", // detail: "code" | "project" | "history" | "close"
 } as const;
 
 export function dispatchStudioEvent(

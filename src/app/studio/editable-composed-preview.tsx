@@ -16,6 +16,9 @@ import {
 import {
   addSection,
   deleteSection,
+  duplicateSection,
+  hideSection,
+  moveSection,
   type PageComposition,
   type SectionInstance,
 } from "@/mirrorcraft/section-composer";
@@ -142,6 +145,25 @@ export function EditableComposedPagePreview({
             onCompositionChange(addSection(composition, presetId, index));
             setSelectedSectionId(null);
           }}
+          onDuplicateSection={() => {
+            if (!selectedSection) return;
+            onCompositionChange(duplicateSection(composition, selectedSection.instanceId));
+            setSelectedSectionId(null);
+          }}
+          onMoveSection={(dir) => {
+            if (!selectedSection) return;
+            const index = composition.sections.findIndex(
+              (item) => item.instanceId === selectedSection.instanceId,
+            );
+            onCompositionChange(moveSection(composition, selectedSection.instanceId, index + dir));
+          }}
+          onToggleHideSection={() => {
+            if (!selectedSection) return;
+            onCompositionChange(
+              hideSection(composition, selectedSection.instanceId, !selectedSection.hidden),
+            );
+          }}
+          sectionHidden={selectedSection?.hidden ?? false}
           onRemoveSection={() => {
             if (!selectedSection) return;
             onCompositionChange(deleteSection(composition, selectedSection.instanceId));

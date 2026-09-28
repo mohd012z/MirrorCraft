@@ -129,14 +129,14 @@ export function StudioCategoryTabs() {
               </button>
             ))}
 
-            {/* Added template — switches to the IDE view (does not replace Classic) */}
+            {/* Switch to the compact IDE (one preview, docked panels) */}
             <button
               type="button"
               onClick={() => {
                 setActive("ide");
                 dispatchStudioEvent(STUDIO_EVENTS.view, "template");
               }}
-              title="Open the IDE template view"
+              title="Switch to the compact IDE view (one preview)"
               className={tabClass(active === "ide")}
             >
               <span
@@ -145,7 +145,7 @@ export function StudioCategoryTabs() {
                   active === "ide" ? "text-teal-300" : "text-white/35 group-hover:text-white/60"
                 }`}
               >
-                ▦
+                ⧉
               </span>
               <span className="text-[11px] font-semibold tracking-wide">IDE</span>
             </button>

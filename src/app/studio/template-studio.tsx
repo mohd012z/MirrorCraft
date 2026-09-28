@@ -41,6 +41,12 @@ export interface TemplateStudioProps {
   onNewProject: () => void;
   /** Switch back to the classic studio view (the template is an added option). */
   onBack?: () => void;
+  /**
+   * Content for the docked drawers opened from the bottom bar (Code = HTML
+   * editing, Project = recovery/publish, History = history experience).
+   * Rendered by the caller so drawers can reach the shared page model.
+   */
+  renderDrawer?: (which: "code" | "project" | "history") => React.ReactNode;
 }
 
 const BRANCHES = ["main", "preview", "rebrand", "experiment"] as const;
@@ -53,6 +59,7 @@ export function TemplateStudio(props: TemplateStudioProps) {
   const [slot, setSlot] = useState<{ instanceId: string; slot: string; label: string } | null>(null);
   const [draft, setDraft] = useState("");
   const [compileState, setCompileState] = useState<{ at: number; ok: boolean } | null>(null);
+  const [drawer, setDrawer] = useState<"code" | "project" | "history" | null>(null);
 
   // Projects = local autosave snapshots (derived, refreshed as revisions change).
   const [projects, setProjects] = useState<StudioRecoveryRecord[]>([]);
@@ -113,6 +120,27 @@ export function TemplateStudio(props: TemplateStudioProps) {
     dispatchStudioEvent(STUDIO_EVENTS.publish, { compiled: true });
   }
 
+  // Bottom-bar drawer requests (Code / History / Project / close).
+  useEffect(() => {
+    return onStudioEvent(STUDIO_EVENTS.drawer, (detail) => {
+      if (detail === "code" || detail === "project" || detail === "history") {
+        setDrawer((current) => (current === detail ? null : detail));
+      } else if (detail === "close") {
+        setDrawer(null);
+      }
+    });
+  }, []);
+
+  // Escape closes an open drawer (preview-level Esc handling is unaffected).
+  useEffect(() => {
+    if (!drawer) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setDrawer(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [drawer]);
+
   return (
     <div className="flex h-[100svh] flex-col">
       <TopBar
@@ -149,12 +177,33 @@ export function TemplateStudio(props: TemplateStudioProps) {
           onCompositionChange={props.onCompositionChange}
         />
 
-        <div id="mc-canvas" className="min-w-0 flex-1 overflow-y-auto scroll-mt-12">
-          {/* Live canvas: wireframe up top, the real editing categories below */}
-          <div className="h-[38vh] min-h-[300px] shrink-0">
-            <StudioCanvas composition={composition} />
+        <div className="relative min-w-0 flex-1">
+          <div id="mc-canvas" className="h-full overflow-y-auto scroll-mt-12">
+            {/* Live canvas: wireframe up top, the real editing categories below */}
+            <div className="h-[38vh] min-h-[300px] shrink-0">
+              <StudioCanvas composition={composition} />
+            </div>
+            <div className="mx-auto w-full max-w-5xl px-4 pb-24">{props.children}</div>
           </div>
-          <div className="mx-auto w-full max-w-5xl px-4 pb-24">{props.children}</div>
+
+          {/* Docked drawer (Code / History / Project) — overlays the live canvas */}
+          {drawer ? (
+            <div className="absolute inset-0 top-14 z-30 flex flex-col border-t border-teal-300/30 bg-[#0a0e1a]/97 shadow-2xl backdrop-blur">
+              <div className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 px-4 py-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-300">
+                  {drawer === "code" ? "Code · direct HTML" : drawer === "history" ? "History" : "Project"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setDrawer(null)}
+                  className="rounded-md px-2 py-1 text-xs text-white/60 hover:bg-white/10 hover:text-white"
+                >
+                  ✕ Close (Esc)
+                </button>
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto p-4">{props.renderDrawer?.(drawer)}</div>
+            </div>
+          ) : null}
         </div>
 
         <RightInspector
@@ -183,7 +232,8 @@ export function TemplateStudio(props: TemplateStudioProps) {
 
       <BottomBar
         compileState={compileState}
-        onOpenHistory={() => scrollToElement("project-edit")}
+        drawer={drawer}
+        onOpenDrawer={(which) => dispatchStudioEvent(STUDIO_EVENTS.drawer, which)}
       />
     </div>
   );
@@ -309,10 +359,10 @@ function TopBar(props: {
           <button
             type="button"
             onClick={props.onBack}
-            title="Back to the classic studio view"
+            title="Switch to the List view (category sections)"
             className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] px-3 text-xs text-white/70 transition hover:border-teal-300/40 hover:bg-white/5 hover:text-white"
           >
-            ‹ Classic
+            ☰ List view
           </button>
         ) : null}
         <button
@@ -564,7 +614,7 @@ function StudioCanvas({ composition }: { composition: PageComposition }) {
             type="button"
             onClick={() => {
               setMode("html");
-              window.setTimeout(() => scrollToElement("html-edit"), 60);
+              dispatchStudioEvent(STUDIO_EVENTS.drawer, "code");
             }}
             className={`h-7 rounded-md px-3 transition ${mode === "html" ? "bg-teal-400/15 text-teal-200" : "text-white/55 hover:text-white"}`}
           >
@@ -591,10 +641,7 @@ function StudioCanvas({ composition }: { composition: PageComposition }) {
           ))}
         </div>
         <p className="mx-auto mt-3 max-w-3xl text-center text-[11px] text-white/30">
-          Wireframe of the cloned page · full interactive editing lives in the{" "}
-          <button type="button" onClick={() => scrollToElement("page-edit")} className="text-teal-300/80 underline">
-            Page category below
-          </button>
+          Wireframe of the cloned page · the interactive preview is just below
         </p>
       </div>
     </div>
@@ -861,10 +908,10 @@ function RightInspector({
           <div className="space-y-2">
             <button
               type="button"
-              onClick={() => scrollToElement("project-edit")}
+              onClick={() => dispatchStudioEvent(STUDIO_EVENTS.drawer, "project")}
               className="block w-full rounded-lg border border-white/10 px-3 py-2 text-left text-xs text-white/75 hover:bg-white/5"
             >
-              Open project panel (I/O · history)
+              Open project drawer (I/O · recovery · publish gate)
             </button>
             <button
               type="button"
@@ -875,7 +922,7 @@ function RightInspector({
             </button>
             <button
               type="button"
-              onClick={() => scrollToElement("html-edit")}
+              onClick={() => dispatchStudioEvent(STUDIO_EVENTS.drawer, "code")}
               className="block w-full rounded-lg border border-white/10 px-3 py-2 text-left text-xs text-white/75 hover:bg-white/5"
             >
               Open direct HTML editor
@@ -960,20 +1007,47 @@ function SectionLayoutControls({
 
 /* ---------- bottom status bar ---------- */
 
+type DrawerId = "code" | "project" | "history";
+
+const DRAWER_BUTTONS: { id: DrawerId; label: string }[] = [
+  { id: "code", label: "</> Code" },
+  { id: "history", label: "History" },
+  { id: "project", label: "Project" },
+];
+
 function BottomBar({
   compileState,
-  onOpenHistory,
+  drawer,
+  onOpenDrawer,
 }: {
   compileState: { at: number; ok: boolean } | null;
-  onOpenHistory: () => void;
+  drawer: DrawerId | null;
+  onOpenDrawer: (which: DrawerId) => void;
 }) {
-  const barBtn =
-    "h-8 rounded-md px-3 text-xs text-white/55 transition hover:bg-white/5 hover:text-white";
+  const barBtn = (active: boolean) =>
+    `h-8 rounded-md px-3 text-xs transition hover:bg-white/5 hover:text-white ${
+      active ? "bg-teal-400/15 text-teal-200 ring-1 ring-teal-300/40" : "text-white/55"
+    }`;
   return (
     <footer className="flex flex-wrap items-center gap-1 border-t border-teal-300/20 bg-[#0a0e1a] px-3 py-1.5">
-      <button type="button" onClick={onOpenHistory} className={barBtn}>
-        History
-      </button>
+      {DRAWER_BUTTONS.map((button) => (
+        <button
+          key={button.id}
+          type="button"
+          onClick={() => onOpenDrawer(button.id)}
+          aria-pressed={drawer === button.id}
+          title={
+            button.id === "code"
+              ? "Direct HTML editing (docked drawer)"
+              : button.id === "history"
+                ? "Undo/redo history (docked drawer)"
+                : "Project I/O · recovery · compile & publish gate"
+          }
+          className={barBtn(drawer === button.id)}
+        >
+          {button.label}
+        </button>
+      ))}
 
       <span className="ml-auto flex items-center gap-2 text-[10px] text-white/35">
         {compileState ? (

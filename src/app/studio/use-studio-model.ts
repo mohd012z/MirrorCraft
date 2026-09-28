@@ -26,7 +26,7 @@ import {
   useStudioRecovery,
   type StudioRecoveryController,
 } from "@/app/studio/use-studio-recovery";
-import { STUDIO_EVENTS, onStudioEvent } from "@/app/studio/studio-bus";
+import { STUDIO_EVENTS, dispatchStudioEvent, onStudioEvent } from "@/app/studio/studio-bus";
 import type { StudioRecoveryRecord } from "@/mirrorcraft/studio-recovery";
 import type { SeededState } from "@/mirrorcraft/clone-seeds";
 
@@ -110,17 +110,25 @@ export function useStudioModel(initial?: StudioModelInitial): StudioModel {
     });
     const offIO = onStudioEvent(STUDIO_EVENTS.io, (kind) => {
       if (kind !== "import" && kind !== "export" && kind !== "load") return;
-      const panel = document.getElementById("project-io");
-      if (!panel) return;
       const names: Record<string, string> = {
         import: "Import Project",
         export: "Export Project",
         load: "Load Project",
       };
-      const button = [...panel.querySelectorAll<HTMLButtonElement>("button")].find(
-        (el) => el.textContent?.trim() === names[kind],
-      );
-      button?.click();
+      function clickIOMode() {
+        const panel = document.getElementById("project-io");
+        if (!panel) return false;
+        const button = [...panel.querySelectorAll<HTMLButtonElement>("button")].find(
+          (el) => el.textContent?.trim() === names[kind as string],
+        );
+        button?.click();
+        return true;
+      }
+      if (!clickIOMode()) {
+        // Compact IDE: the I/O panel lives in the Project drawer — open it, retry.
+        dispatchStudioEvent(STUDIO_EVENTS.drawer, "project");
+        window.setTimeout(clickIOMode, 150);
+      }
     });
     return () => {
       offUndo();

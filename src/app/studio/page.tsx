@@ -60,9 +60,9 @@ function StudioLoading() {
 function StudioPageInner() {
   const search = useSearchParams().toString();
   const initial = studioInitialForSearch(search);
-  const [view, setView] = useState<"classic" | "template">("classic");
+  const [view, setView] = useState<"classic" | "template">("template");
 
-  // The bottom bar "IDE" tab (and the template's "‹ Classic" button) switch views.
+  // The bottom bar "List view" tab (and the template's "‹ Classic" button) switch views.
   useEffect(() => {
     return onStudioEvent(STUDIO_EVENTS.view, (detail) => {
       if (detail === "classic" || detail === "template") setView(detail);
@@ -103,6 +103,14 @@ function StudioPageInner() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => dispatchStudioEvent(STUDIO_EVENTS.view, "template")}
+              title="Switch to the compact IDE view"
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-teal-300/30 bg-teal-400/10 px-3 text-xs font-semibold text-teal-200 transition hover:bg-teal-400/20"
+            >
+              ⧉ Compact IDE
+            </button>
             <div className="flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.03] p-1">
               <button
                 type="button"

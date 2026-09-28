@@ -20,6 +20,11 @@ export interface SectionQuickBarProps {
   onCycleAlign: () => void;
   onAddSection: (presetId: string) => void;
   onRemoveSection: () => void;
+  /** Section ops surfaced on the preview (compact one-screen editing). */
+  onDuplicateSection?: () => void;
+  onMoveSection?: (dir: -1 | 1) => void;
+  onToggleHideSection?: () => void;
+  sectionHidden?: boolean;
 }
 
 const ALIGN_LABEL: Record<AlignId, string> = {
@@ -86,6 +91,45 @@ export function SectionQuickBar(props: SectionQuickBarProps) {
           onClick={props.onCycleAlign}
         >
           {ALIGN_LABEL[props.alignId]}
+        </button>
+      </div>
+
+      <div className="flex items-center gap-1.5">
+        <button
+          type="button"
+          title="Duplicate section"
+          disabled={!props.section}
+          className={`${chip} disabled:cursor-not-allowed disabled:opacity-30`}
+          onClick={() => props.onDuplicateSection?.()}
+        >
+          ⧉ Duplicate
+        </button>
+        <button
+          type="button"
+          title="Move section up"
+          disabled={!props.section}
+          className={`${chip} disabled:cursor-not-allowed disabled:opacity-30`}
+          onClick={() => props.onMoveSection?.(-1)}
+        >
+          ↑
+        </button>
+        <button
+          type="button"
+          title="Move section down"
+          disabled={!props.section}
+          className={`${chip} disabled:cursor-not-allowed disabled:opacity-30`}
+          onClick={() => props.onMoveSection?.(1)}
+        >
+          ↓
+        </button>
+        <button
+          type="button"
+          title={props.sectionHidden ? "Show section" : "Hide section"}
+          disabled={!props.section}
+          className={`${chip} disabled:cursor-not-allowed disabled:opacity-30`}
+          onClick={() => props.onToggleHideSection?.()}
+        >
+          {props.sectionHidden ? "👁 Show" : "Hide"}
         </button>
       </div>
 

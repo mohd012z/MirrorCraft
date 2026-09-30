@@ -1,3 +1,4 @@
+import type { ToolCapability } from "@/mirrorcraft/capability-firewall/types";
 import type { TrustTier } from "@/mirrorcraft/prompt-defense";
 
 export type AgentPhase =
@@ -41,6 +42,8 @@ export interface AgentTool {
   description: string;
   mutatesWorkspace: boolean;
   requiresVerification: boolean;
+  /** Optional additive metadata for provenance-aware authorization. */
+  capabilities?: ToolCapability[];
 }
 
 export interface AgentModelProfile {

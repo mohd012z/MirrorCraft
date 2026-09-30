@@ -14,6 +14,7 @@ import {
   type StudioModelInitial,
 } from "@/app/studio/use-studio-model";
 import { dispatchStudioEvent, STUDIO_EVENTS } from "@/app/studio/studio-bus";
+import { renderInspectionDrawer } from "@/app/studio/studio-inspection-drawers";
 
 export interface StudioWorkspaceProps {
   /** Which shell renders the shared page model (default: the compact IDE template). */
@@ -43,27 +44,47 @@ export function StudioWorkspace({
         composition={model.composition}
         content={model.content}
         graph={model.graph}
+        history={model.history}
         historyEntries={model.history.entries.length}
         onCompositionChange={model.changeComposition}
         onContentChange={model.changeContent}
         onRestore={model.restoreFrom}
         onNewProject={model.newProject}
         onBack={() => dispatchStudioEvent(STUDIO_EVENTS.view, "classic")}
-        renderDrawer={(which) =>
-          which === "code" ? (
-            <>
-              <p className="mb-3 text-xs text-white/40">
-                Edit the page markup directly · live sandboxed preview. Sync pushes it back to the sections.
-              </p>
-              <HtmlEditPanel
-                composition={model.composition}
-                content={model.content}
-                paletteId={model.paletteId}
-              />
-            </>
-          ) : which === "history" ? (
-            <StudioHistoryExperience history={model.history} onHistoryChange={model.setHistory} />
-          ) : (
+        renderDrawer={(which) => {
+          if (
+            which === "ai-trust" ||
+            which === "map" ||
+            which === "context360" ||
+            which === "diff" ||
+            which === "network" ||
+            which === "console"
+          ) {
+            return renderInspectionDrawer(which, {
+              composition: model.composition,
+              content: model.content,
+              graph: model.graph,
+              history: model.history,
+            });
+          }
+          if (which === "code") {
+            return (
+              <>
+                <p className="mb-3 text-xs text-white/40">
+                  Edit the page markup directly · live sandboxed preview. Sync pushes it back to the sections.
+                </p>
+                <HtmlEditPanel
+                  composition={model.composition}
+                  content={model.content}
+                  paletteId={model.paletteId}
+                />
+              </>
+            );
+          }
+          if (which === "history") {
+            return <StudioHistoryExperience history={model.history} onHistoryChange={model.setHistory} />;
+          }
+          return (
             <div className="space-y-4">
               <StudioProjectIOPanel
                 projectId={STUDIO_RECOVERY_PROJECT_ID}
@@ -75,8 +96,8 @@ export function StudioWorkspace({
               <StudioRestrictionSurface envelope={null} />
               <StudioCompileBar />
             </div>
-          )
-        }
+          );
+        }}
       >
         {/* One preview first (compact: Page + collapsible Design only; the rest
             live in the Code / History / Project drawers). */}

@@ -18,6 +18,8 @@ const SCOPE_LABELS: Readonly<Record<RestrictionScope, string>> = {
   hosting: "Hosting",
   deployment: "Deployment",
   publish: "Publish",
+  "ai-context": "AI Context",
+  "agent-tool": "Agent Tools",
 };
 
 const SCOPE_ORDER: readonly RestrictionScope[] = [
@@ -27,6 +29,8 @@ const SCOPE_ORDER: readonly RestrictionScope[] = [
   "hosting",
   "deployment",
   "publish",
+  "ai-context",
+  "agent-tool",
 ];
 
 function RestrictionBadge({ restriction }: { restriction: Restriction }) {

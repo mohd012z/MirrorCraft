@@ -38,6 +38,20 @@ if (!authorizeToolCapability(readOnly).allowed) {
   throw new Error("explicit read-only analysis of untrusted evidence should be allowed");
 }
 
+const untrustedNetworkRead = authorizeToolCapability({
+  taskId: "external-network-task",
+  instructionSource: "external-content",
+  evidenceIds: ["e-network"],
+  capability: "network-read",
+  toolClass: "network",
+  mutatesWorkspace: false,
+  requiresVerification: false,
+  verified: false,
+});
+if (untrustedNetworkRead.allowed) {
+  throw new Error("external content must not authorize outbound network reads by default");
+}
+
 const operatorCitingHostile = authorizeToolCapability({
   taskId: "operator-task",
   instructionSource: "operator",

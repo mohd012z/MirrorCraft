@@ -49,7 +49,7 @@
     "smoke:editing-plan": "node scripts/smoke-editing-plan-contracts.mjs",
     "smoke:runtime": "node scripts/smoke-runtime-classifier.mjs",
     "smoke:domain": "node scripts/smoke-domain-planner.mjs",
-    "smoke:lifecycle": "node scripts/smoke-lifecycle.mjs",
+    "smoke:lifecycle": "node scripts/smoke-lifecycle.mjs && node scripts/smoke-adversarial-release.mjs",
     "smoke:studio": "node scripts/smoke-studio-playwright.mjs"
   },
   "dependencies": {

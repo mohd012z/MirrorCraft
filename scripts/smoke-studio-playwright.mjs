@@ -92,23 +92,6 @@ try {
   await fileChooser.setFiles(exportedPath);
   await projectIO.getByText(/Imported project/).waitFor({ state: "visible" });
   assert.equal((await editable.textContent())?.trim(), before);
-
-  // Diff: after a real edit, the drawer must produce the actual change report.
-  await consoleDrawer.getByRole("button", { name: /Close/ }).click();
-  await consoleDrawer.waitFor({ state: "hidden" });
-  const diffEditable = composed.locator("[data-mirrorcraft-node]").first();
-  await diffEditable.click();
-  const diffInput = composed.locator("input").last();
-  await diffInput.waitFor({ state: "visible" });
-  await diffInput.fill("Diff probe edit");
-  await composed.getByRole("button", { name: "Apply", exact: true }).click();
-  await page.locator("footer").getByRole("button", { name: "Diff", exact: true }).click();
-  const diffDrawer = page.locator(".absolute.inset-0.top-14").first();
-  const diffText = (await diffDrawer.textContent()) ?? "";
-  assert.ok(diffText.includes("Session change report"), "Diff should show the real change report after an edit");
-  assert.ok(/content value\(s\)/.test(diffText), "Diff report should count the edit");
-
-
   const secondEdit = `${editedText} Undo`;
   await editable.click();
   await composed.locator("input").last().fill(secondEdit);
@@ -209,6 +192,22 @@ try {
   const consoleText = (await consoleDrawer.textContent()) ?? "";
   assert.ok(/viewport/.test(consoleText), "Console should capture viewport events");
   assert.ok(/console probe/.test(consoleText), "Console should capture event detail");
+
+  // Diff: after a real edit, the drawer must produce the actual change report.
+  await consoleDrawer.getByRole("button", { name: /Close/ }).click();
+  await consoleDrawer.waitFor({ state: "hidden" });
+  const diffEditable = composed.locator("[data-mirrorcraft-node]").first();
+  await diffEditable.click();
+  const diffInput = composed.locator("input").last();
+  await diffInput.waitFor({ state: "visible" });
+  await diffInput.fill("Diff probe edit");
+  await composed.getByRole("button", { name: "Apply", exact: true }).click();
+  await page.locator("footer").getByRole("button", { name: "Diff", exact: true }).click();
+  const diffDrawer = page.locator(".absolute.inset-0.top-14").first();
+  const diffText = (await diffDrawer.textContent()) ?? "";
+  assert.ok(diffText.includes("Session change report"), "Diff should show the real change report after an edit");
+  assert.ok(/content value\(s\)/.test(diffText), "Diff report should count the edit");
+
   console.log("MirrorCraft Studio Playwright smoke passed");
 } finally {
   if (browser) await browser.close();

@@ -43,6 +43,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Clone example smoke
+        run: npm run smoke:example
+
       - name: Crypto smoke
         run: npm run smoke:crypto
 

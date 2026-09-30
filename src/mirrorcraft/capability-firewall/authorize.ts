@@ -9,6 +9,7 @@ const PRIVILEGED_CAPABILITIES: ReadonlySet<ToolCapability> = new Set([
   "workspace-edit",
   "terminal-exec",
   "git-write",
+  "network-read",
   "network-write",
   "deployment",
   "persistent-state",
@@ -53,7 +54,7 @@ export function authorizeToolCapability(
     return deny(request, "This tool requires verification before the requested capability may run.");
   }
 
-  if (!trustedInstruction && request.capability !== "network-read") {
+  if (!trustedInstruction) {
     return deny(request, `Instruction source ${request.instructionSource} is not executable.`);
   }
 

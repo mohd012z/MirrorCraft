@@ -44,6 +44,7 @@
     "smoke:crypto": "node scripts/smoke-crypto.mjs",
     "smoke:integrations": "node scripts/smoke-integration-boundary.mjs && node scripts/smoke-integration-connections.mjs",
     "smoke:restrictions": "node scripts/smoke-restrictions.mjs && node scripts/smoke-ai-restrictions.mjs",
+    "smoke:adversarial": "node scripts/smoke-adversarial-context.mjs",
     "smoke:providers": "node scripts/smoke-provider-adapters.mjs && node scripts/smoke-zero-cost-hosting.mjs && node scripts/smoke-provider-deployment.mjs && npm run smoke:restrictions && node scripts/smoke-policy-revision.mjs && node scripts/smoke-policy-attestation.mjs",
     "smoke:editing-plan": "node scripts/smoke-editing-plan-contracts.mjs",
     "smoke:runtime": "node scripts/smoke-runtime-classifier.mjs",

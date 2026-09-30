@@ -1,3 +1,4 @@
+import type { ToolAuthorizationDecision } from "@/mirrorcraft/capability-firewall";
 import type { DeploymentTarget } from "@/mirrorcraft/deployment/targets";
 import { hostingProviderToDeploymentTarget } from "@/mirrorcraft/deployment/targets";
 import type { DomainPlan } from "@/mirrorcraft/domain/types";
@@ -6,6 +7,7 @@ import type { FreeHostingCandidate } from "@/mirrorcraft/hosting/classifier";
 import type { AccessDecision } from "@/mirrorcraft/intake/access-policy";
 import type { IntegrationConnectionSummary } from "@/mirrorcraft/integrations/connections";
 import type { IntegrationRuntime } from "@/mirrorcraft/integrations/types";
+import type { InjectionAssessment } from "@/mirrorcraft/prompt-defense";
 import type { PublishDecision } from "@/mirrorcraft/publish";
 import { redactSensitiveText } from "@/mirrorcraft/security/redaction";
 
@@ -15,7 +17,9 @@ export type RestrictionScope =
   | "integration"
   | "hosting"
   | "deployment"
-  | "publish";
+  | "publish"
+  | "ai-context"
+  | "agent-tool";
 
 export type RestrictionSeverity = "block" | "warning";
 
@@ -40,7 +44,13 @@ export type RestrictionCode =
   | "secret-boundary-violation"
   | "domain-unverified"
   | "domain-plan-blocked"
-  | "domain-warning";
+  | "domain-warning"
+  | "external-instruction-detected"
+  | "instruction-boundary-violation"
+  | "tool-escalation-request"
+  | "context-poisoning"
+  | "untrusted-persistent-instruction"
+  | "secret-exposure-request";
 
 export interface Restriction {
   code: RestrictionCode;
@@ -124,6 +134,115 @@ export function combineRestrictionDecisions(
   return createRestrictionDecision(
     decisions.flatMap((decision) => decision.restrictions),
   );
+}
+
+export function restrictionsFromInjectionAssessment(
+  assessment: InjectionAssessment,
+): RestrictionDecision {
+  if (assessment.classification === "none") {
+    return createRestrictionDecision([]);
+  }
+
+  const evidence = assessment.evidence.map((item) => item.id);
+  const signalEvidence = assessment.signals.map((signal) => `signal:${signal}`);
+  const allEvidence = [...evidence, ...signalEvidence];
+
+  if (assessment.signals.includes("secret-acquisition-request")) {
+    return createRestrictionDecision([
+      {
+        code: "secret-exposure-request",
+        scope: "ai-context",
+        severity: "block",
+        message:
+          "Untrusted content attempted to make the agent acquire or disclose secret material.",
+        evidence: allEvidence,
+      },
+    ]);
+  }
+
+  if (
+    assessment.action === "exclude-from-agent-context" &&
+    assessment.signals.includes("persistent-instruction")
+  ) {
+    return createRestrictionDecision([
+      {
+        code: "untrusted-persistent-instruction",
+        scope: "ai-context",
+        severity: "block",
+        message:
+          "Untrusted content attempted to persist instructions beyond its evidence scope.",
+        evidence: allEvidence,
+      },
+    ]);
+  }
+
+  if (
+    assessment.action === "exclude-from-agent-context" &&
+    assessment.signals.includes("tool-permission-escalation")
+  ) {
+    return createRestrictionDecision([
+      {
+        code: "tool-escalation-request",
+        scope: "agent-tool",
+        severity: "block",
+        message:
+          "Untrusted content attempted to authorize or invoke a privileged tool capability.",
+        evidence: allEvidence,
+      },
+    ]);
+  }
+
+  if (assessment.action === "exclude-from-agent-context") {
+    return createRestrictionDecision([
+      {
+        code: "instruction-boundary-violation",
+        scope: "ai-context",
+        severity: "block",
+        message:
+          "Untrusted content attempted to cross from evidence into executable agent instruction.",
+        evidence: allEvidence,
+      },
+    ]);
+  }
+
+  if (assessment.action === "quarantine") {
+    return createRestrictionDecision([
+      {
+        code: "context-poisoning",
+        scope: "ai-context",
+        severity: "warning",
+        message:
+          "Potential prompt-injection content was quarantined from executable model context.",
+        evidence: allEvidence,
+      },
+    ]);
+  }
+
+  return createRestrictionDecision([
+    {
+      code: "external-instruction-detected",
+      scope: "ai-context",
+      severity: "warning",
+      message:
+        "Untrusted content contains instruction-like signals and remains evidence-only.",
+      evidence: allEvidence,
+    },
+  ]);
+}
+
+export function restrictionsFromToolAuthorization(
+  decision: ToolAuthorizationDecision,
+): RestrictionDecision {
+  if (decision.allowed) return createRestrictionDecision([]);
+  return createRestrictionDecision([
+    {
+      code: "tool-escalation-request",
+      scope: "agent-tool",
+      severity: "block",
+      message: decision.reason,
+      evidence: decision.evidenceIds,
+    },
+  ]);
 }
 
 export function restrictionsFromAccessDecision(

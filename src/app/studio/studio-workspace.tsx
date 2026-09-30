@@ -1,7 +1,8 @@
 "use client";
 
 import { HtmlEditPanel } from "@/app/studio/html-edit-panel";
-import { StudioCompositionSurface, StudioCompileBar } from "@/app/studio/studio-composition-surface";
+import { StudioCompositionSurface } from "@/app/studio/studio-composition-surface";
+import { PublishGate } from "@/app/studio/publish-gate";
 import { StudioHistoryExperience } from "@/app/studio/studio-history-experience";
 import { StudioOperationsSurface } from "@/app/studio/studio-operations-surface";
 import { StudioProjectIOPanel } from "@/app/studio/studio-project-io-panel";
@@ -94,7 +95,12 @@ export function StudioWorkspace({
               <StudioRecoveryPanel controller={model.recovery} />
               <StudioOperationsSurface selection={null} />
               <StudioRestrictionSurface envelope={null} />
-              <StudioCompileBar />
+              <PublishGate
+                composition={model.composition}
+                content={model.content}
+                paletteId={model.paletteId}
+                branch="main"
+              />
             </div>
           );
         }}

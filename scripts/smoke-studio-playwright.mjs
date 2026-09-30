@@ -46,7 +46,15 @@ async function waitForServer() {
 let browser;
 try {
   await waitForServer();
-  browser = await chromium.launch({ headless: true });
+  // CI installs the matching bundled Chromium. Locally, if the Playwright CDN
+  // is unreachable, allow overriding with a cached headless-shell binary via
+  // PLAYWRIGHT_CHROMIUM_EXECUTABLE (no behaviour change when unset).
+  const launchOptions = { headless: true };
+  if (process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE) {
+    launchOptions.executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE;
+    launchOptions.args = ["--no-sandbox"];
+  }
+  browser = await chromium.launch(launchOptions);
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   await page.goto(`${BASE_URL}/studio`, { waitUntil: "networkidle" });
 
@@ -117,9 +125,28 @@ try {
     "Expected at least one evidence-ready hosting candidate",
   );
 
+  // ---------- honest Compile · Publish gate (real compile evidence, real artifact) ----------
+  const publishGate = page.locator("#project-edit");
+  const compileButton = publishGate.getByRole("button", { name: /Compile/ });
+  assert.equal(await compileButton.isVisible(), true, "Compile button should be visible");
+
+  const publishButton = publishGate.getByRole("button", { name: /Publish \(download artifact\)/ });
+  assert.equal(await publishButton.isEnabled(), false, "Publish must be disabled before a passing compile");
+
+  await compileButton.click();
   assert.equal(
-    await page.getByRole("button", { name: "Compile", exact: true }).isVisible(),
+    await publishGate.getByText("✓ Compiled", { exact: true }).isVisible(),
     true,
+    "Compile should report a passing compile",
+  );
+  assert.ok(
+    (await publishGate.getByText("Checksum").count()) > 0,
+    "Compile should expose real evidence (checksum)",
+  );
+  assert.equal(
+    await publishButton.isEnabled(),
+    true,
+    "Publish should enable after a passing, current compile",
   );
 
   // ---------- compact IDE: functional inspection buttons (from the defense study) ----------

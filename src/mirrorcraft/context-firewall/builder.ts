@@ -1,8 +1,13 @@
 import { isExecutableInstructionSource } from "@/mirrorcraft/prompt-defense";
+import { redactSensitiveText } from "@/mirrorcraft/security/redaction";
 import type { ContextChunk, ContextEnvelope } from "./types";
 
 function isQuarantined(chunk: ContextChunk): boolean {
   return chunk.disposition === "quarantine" || chunk.disposition === "exclude-from-agent-context";
+}
+
+function modelVisibleContent(content: string): string {
+  return redactSensitiveText(content).text;
 }
 
 function renderModelContext(
@@ -10,10 +15,10 @@ function renderModelContext(
   evidence: readonly ContextChunk[],
 ): string {
   const instructionText = instructions
-    .map((chunk) => `[INSTRUCTION ${chunk.id}]\n${chunk.content}`)
+    .map((chunk) => `[INSTRUCTION ${chunk.id}]\n${modelVisibleContent(chunk.content)}`)
     .join("\n\n");
   const evidenceText = evidence
-    .map((chunk) => `[EVIDENCE ${chunk.id} source=${chunk.source} trust=${chunk.trust}]\n${chunk.content}`)
+    .map((chunk) => `[EVIDENCE ${chunk.id} source=${chunk.source} trust=${chunk.trust}]\n${modelVisibleContent(chunk.content)}`)
     .join("\n\n");
 
   const sections: string[] = [];

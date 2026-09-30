@@ -5,8 +5,13 @@ on:
     branches:
       - main
   pull_request:
+    # Gate PRs against main AND against in-flight feature branches (feat/*,
+    # feature/*) — without this, a PR whose base is a feature branch only
+    # gets Check and never runs the smoke/Playwright verification.
     branches:
       - main
+      - "feat/*"
+      - "feature/*"
 
 permissions:
   contents: read

@@ -37,6 +37,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "check": "npm run lint && npm run typecheck && npm run build",
+    "clone:url": "node scripts/clone-url-runtime.mjs",
     "sync:skills": "node scripts/sync-skills.mjs",
     "sync:agents": "node scripts/sync-agent-rules.mjs",
     "smoke:example": "node scripts/smoke-clone-example.mjs",

@@ -52,6 +52,9 @@ jobs:
       - name: Provider adapter smoke
         run: npm run smoke:providers
 
+      - name: Adversarial context smoke
+        run: npm run smoke:adversarial
+
       - name: Editing plan contracts smoke
         run: npm run smoke:editing-plan
 

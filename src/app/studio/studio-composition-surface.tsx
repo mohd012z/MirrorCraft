@@ -7,6 +7,7 @@ import { HtmlEditPanel } from "@/app/studio/html-edit-panel";
 import { PreviewCanvas } from "@/app/studio/preview-canvas";
 import { SectionComposerPanel } from "@/app/studio/section-composer-panel";
 import { StudioHistoryExperience } from "@/app/studio/studio-history-experience";
+import { PublishGate } from "@/app/studio/publish-gate";
 import { StudioOperationsSurface } from "@/app/studio/studio-operations-surface";
 import { StudioProjectIOPanel } from "@/app/studio/studio-project-io-panel";
 import { StudioRestrictionSurface } from "@/app/studio/studio-restriction-surface";
@@ -137,7 +138,12 @@ export function StudioCompositionSurface({
         <StudioRecoveryPanel controller={recovery} />
         <StudioOperationsSurface selection={null} />
         <StudioRestrictionSurface envelope={null} />
-        <StudioCompileBar />
+        <PublishGate
+          composition={composition}
+          content={content}
+          paletteId={paletteId}
+          branch="main"
+        />
 
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.025] px-3 py-2 text-xs text-white/50">
           <span>Shared page model</span>
@@ -226,30 +232,3 @@ function StudioDesignSurface() {
   );
 }
 
-/* ---------- Project category: compile gate (keeps the "Compile" action honest) ---------- */
-
-export function StudioCompileBar() {
-  const [status, setStatus] = useState("Not compiled yet");
-  function compile() {
-    setStatus(
-      "Compile verified — the static export builds (npm run build). Publishing is gated on hosting + domain evidence.",
-    );
-  }
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.025] p-4">
-      <div>
-        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-300">
-          Compile · Publish gate
-        </div>
-        <p className="mt-1 max-w-xl text-xs text-white/45">{status}</p>
-      </div>
-      <button
-        type="button"
-        onClick={compile}
-        className="h-9 rounded-md bg-teal-400 px-4 text-xs font-semibold text-slate-950 hover:bg-teal-300"
-      >
-        Compile
-      </button>
-    </div>
-  );
-}

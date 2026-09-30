@@ -3,6 +3,7 @@ export type CloneStage =
   | "access-check"
   | "route-discovery"
   | "capture"
+  | "trust-analysis"
   | "extract"
   | "normalize"
   | "index"
@@ -12,6 +13,7 @@ export type CloneStage =
   | "compare"
   | "repair"
   | "verify"
+  | "adversarial-verify"
   | "release";
 
 export type StageStatus = "pending" | "running" | "passed" | "failed" | "blocked" | "skipped";
@@ -22,12 +24,14 @@ export interface CloneArtifactRef {
     | "source"
     | "route-map"
     | "capture"
+    | "trust-report"
     | "site-dna"
     | "code360"
     | "component-graph"
     | "generated-source"
     | "fidelity-report"
     | "repair-log"
+    | "adversarial-report"
     | "release-manifest";
   location: string;
   hash?: string;
@@ -59,6 +63,7 @@ export const CLONE_STAGE_ORDER: readonly CloneStage[] = [
   "access-check",
   "route-discovery",
   "capture",
+  "trust-analysis",
   "extract",
   "normalize",
   "index",
@@ -68,6 +73,7 @@ export const CLONE_STAGE_ORDER: readonly CloneStage[] = [
   "compare",
   "repair",
   "verify",
+  "adversarial-verify",
   "release",
 ] as const;
 

@@ -1,2 +1,13 @@
-// Task 1 RED fixture entry point. Production exports are added after CI confirms the fixture fails for missing contracts.
-export {};
+export type {
+  InjectionAssessment,
+  InjectionClassification,
+  InjectionDisposition,
+  InjectionEvidence,
+  InjectionSignal,
+  SecurityEvidence,
+  SecurityEvidenceInput,
+  SecurityEvidenceSourceType,
+  TrustTier,
+} from "./types";
+export { createSecurityEvidence } from "./evidence";
+export { isExecutableInstructionSource } from "./trust-boundary";

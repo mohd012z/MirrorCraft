@@ -27,13 +27,16 @@ import {
 } from "@/mirrorcraft/section-composer";
 import type { StudioRecoveryRecord } from "@/mirrorcraft/studio-recovery";
 import { loadStudioRecovery } from "@/mirrorcraft/studio-recovery/storage";
+import type { StudioHistory } from "@/mirrorcraft/studio-history";
 import type { WebStructureGraph } from "@/mirrorcraft/web-structure/types";
+import type { InspectionDrawerId } from "@/app/studio/studio-inspection-drawers";
 
 export interface TemplateStudioProps {
   children: React.ReactNode;
   composition: PageComposition;
   content: SectionContentState;
   graph: WebStructureGraph;
+  history: StudioHistory;
   historyEntries: number;
   onCompositionChange: (next: PageComposition, label?: string) => void;
   onContentChange: (next: SectionContentState) => void;
@@ -43,10 +46,11 @@ export interface TemplateStudioProps {
   onBack?: () => void;
   /**
    * Content for the docked drawers opened from the bottom bar (Code = HTML
-   * editing, Project = recovery/publish, History = history experience).
+   * editing, Project = recovery/publish, History = history experience, plus
+   * the inspection drawers: AI trust, Map, 360°, Diff, Network, Console).
    * Rendered by the caller so drawers can reach the shared page model.
    */
-  renderDrawer?: (which: "code" | "project" | "history") => React.ReactNode;
+  renderDrawer?: (which: "code" | "project" | "history" | InspectionDrawerId) => React.ReactNode;
 }
 
 const BRANCHES = ["main", "preview", "rebrand", "experiment"] as const;
@@ -59,7 +63,7 @@ export function TemplateStudio(props: TemplateStudioProps) {
   const [slot, setSlot] = useState<{ instanceId: string; slot: string; label: string } | null>(null);
   const [draft, setDraft] = useState("");
   const [compileState, setCompileState] = useState<{ at: number; ok: boolean } | null>(null);
-  const [drawer, setDrawer] = useState<"code" | "project" | "history" | null>(null);
+  const [drawer, setDrawer] = useState<DrawerId | null>(null);
 
   // Projects = local autosave snapshots (derived, refreshed as revisions change).
   const [projects, setProjects] = useState<StudioRecoveryRecord[]>([]);
@@ -120,11 +124,11 @@ export function TemplateStudio(props: TemplateStudioProps) {
     dispatchStudioEvent(STUDIO_EVENTS.publish, { compiled: true });
   }
 
-  // Bottom-bar drawer requests (Code / History / Project / close).
+  // Bottom-bar drawer requests (Code / History / Project / inspection / close).
   useEffect(() => {
     return onStudioEvent(STUDIO_EVENTS.drawer, (detail) => {
-      if (detail === "code" || detail === "project" || detail === "history") {
-        setDrawer((current) => (current === detail ? null : detail));
+      if (typeof detail === "string" && OPEN_DRAWERS.has(detail)) {
+        setDrawer((current) => (current === detail ? null : (detail as DrawerId)));
       } else if (detail === "close") {
         setDrawer(null);
       }
@@ -191,7 +195,7 @@ export function TemplateStudio(props: TemplateStudioProps) {
             <div className="absolute inset-0 top-14 z-30 flex flex-col border-t border-teal-300/30 bg-[#0a0e1a]/97 shadow-2xl backdrop-blur">
               <div className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 px-4 py-2">
                 <span className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-300">
-                  {drawer === "code" ? "Code · direct HTML" : drawer === "history" ? "History" : "Project"}
+                  {DRAWER_TITLES[drawer]}
                 </span>
                 <button
                   type="button"
@@ -1007,13 +1011,37 @@ function SectionLayoutControls({
 
 /* ---------- bottom status bar ---------- */
 
-type DrawerId = "code" | "project" | "history";
+type DrawerId =
+  | "code"
+  | "project"
+  | "history"
+  | InspectionDrawerId;
 
-const DRAWER_BUTTONS: { id: DrawerId; label: string }[] = [
-  { id: "code", label: "</> Code" },
-  { id: "history", label: "History" },
-  { id: "project", label: "Project" },
+const DRAWER_BUTTONS: { id: DrawerId; label: string; title: string }[] = [
+  { id: "code", label: "</> Code", title: "Direct HTML editing (docked drawer)" },
+  { id: "history", label: "History", title: "Undo/redo history (docked drawer)" },
+  { id: "project", label: "Project", title: "Project I/O · recovery · compile & publish gate" },
+  { id: "ai-trust", label: "AI Trust", title: "Scan page content for injection signals + secrets (evidence-only)" },
+  { id: "map", label: "Map", title: "Page structure graph — hierarchy, node kinds, relationships" },
+  { id: "context360", label: "360°", title: "Inspect any node's 360° context — parents, children, edges" },
+  { id: "diff", label: "Diff", title: "Session change report vs the first snapshot" },
+  { id: "network", label: "Network", title: "Routes, APIs, functions, assets and data flow" },
+  { id: "console", label: "Console", title: "Live studio event stream (undo/redo, selections, I/O…)" },
 ];
+
+const OPEN_DRAWERS = new Set<string>(DRAWER_BUTTONS.map((button) => button.id));
+
+const DRAWER_TITLES: Record<DrawerId, string> = {
+  code: "Code · direct HTML",
+  history: "History",
+  project: "Project",
+  "ai-trust": "AI Trust · content scan",
+  map: "Map · page structure",
+  context360: "360° · node context",
+  diff: "Diff · session changes",
+  network: "Network · routes & data",
+  console: "Console · live events",
+};
 
 function BottomBar({
   compileState,
@@ -1036,13 +1064,7 @@ function BottomBar({
           type="button"
           onClick={() => onOpenDrawer(button.id)}
           aria-pressed={drawer === button.id}
-          title={
-            button.id === "code"
-              ? "Direct HTML editing (docked drawer)"
-              : button.id === "history"
-                ? "Undo/redo history (docked drawer)"
-                : "Project I/O · recovery · compile & publish gate"
-          }
+          title={button.title}
           className={barBtn(drawer === button.id)}
         >
           {button.label}

@@ -18,7 +18,12 @@ export type InjectionSignal =
   | "reasoning-redirection"
   | "output-coercion"
   | "secret-acquisition-request"
-  | "environment-manipulation";
+  | "environment-manipulation"
+  | "reasoning-ban"
+  | "boundary-narrowing"
+  | "standing-authorization"
+  | "disclaimer-ban"
+  | "encoded-exfiltration";
 
 export type InjectionClassification =
   | "none"

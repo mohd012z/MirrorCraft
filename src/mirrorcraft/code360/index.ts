@@ -1,3 +1,12 @@
+import type {
+  InjectionAssessment,
+  InjectionDisposition,
+  InjectionSignal,
+  SecurityEvidence,
+  SecurityEvidenceSourceType,
+  TrustTier,
+} from "@/mirrorcraft/prompt-defense";
+
 export type Code360NodeType =
   | "file"
   | "module"
@@ -54,6 +63,61 @@ export interface Code360Edge {
 export interface Code360Graph {
   nodes: Record<string, Code360Node>;
   edges: Code360Edge[];
+}
+
+export interface AITrustSourceSummary {
+  sourceType: SecurityEvidenceSourceType;
+  origin: string;
+  path?: string;
+  page?: string | number;
+  selector?: string;
+  line?: number;
+  hash: string;
+  capturedAt: string;
+}
+
+export interface AITrustSummary {
+  source: AITrustSourceSummary;
+  trust: TrustTier;
+  signals: InjectionSignal[];
+  confidence: number;
+  disposition: InjectionDisposition;
+  restrictionIds: string[];
+  evidenceIds: string[];
+}
+
+export interface BuildAITrustSummaryInput {
+  evidence: SecurityEvidence;
+  page?: string | number;
+  trust: TrustTier;
+  assessment: InjectionAssessment;
+  restrictionIds?: readonly string[];
+}
+
+export function buildAITrustSummary(input: BuildAITrustSummaryInput): AITrustSummary {
+  const evidenceIds = new Set<string>([
+    input.evidence.id,
+    ...input.assessment.evidence.map((item) => item.id),
+  ]);
+
+  return {
+    source: {
+      sourceType: input.evidence.sourceType,
+      origin: input.evidence.origin,
+      path: input.evidence.path,
+      page: input.page,
+      selector: input.evidence.selector,
+      line: input.evidence.line,
+      hash: input.evidence.hash,
+      capturedAt: input.evidence.capturedAt,
+    },
+    trust: input.trust,
+    signals: [...input.assessment.signals],
+    confidence: input.assessment.score,
+    disposition: input.assessment.action,
+    restrictionIds: [...(input.restrictionIds ?? [])],
+    evidenceIds: [...evidenceIds],
+  };
 }
 
 export class Code360Index {

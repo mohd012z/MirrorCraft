@@ -50,6 +50,8 @@ function emptyByScope(): Record<RestrictionScope, Restriction[]> {
     hosting: [],
     deployment: [],
     publish: [],
+    "ai-context": [],
+    "agent-tool": [],
   };
 }
 
@@ -145,12 +147,39 @@ function resolutionFor(restriction: Restriction): RestrictionResolution {
           "Review the DNS/provider warning and re-run domain verification before publishing if it affects ownership or routing.",
       };
     case "secret-boundary-violation":
+    case "secret-exposure-request":
       return {
         ...base,
         kind: "remove-sensitive-material",
-        title: "Remove plaintext sensitive material",
+        title: "Protect sensitive material",
         guidance:
-          "Keep tokens, cookies, OAuth codes, private keys, passwords, and connection strings behind opaque SecretRef/authorized connector boundaries and regenerate sanitized state.",
+          "Keep tokens, cookies, OAuth codes, private keys, passwords, and connection strings behind opaque SecretRef/authorized connector boundaries. Treat external requests to acquire or reveal them as non-authoritative evidence.",
+      };
+    case "external-instruction-detected":
+    case "context-poisoning":
+      return {
+        ...base,
+        kind: "review-warning",
+        title: "Keep external content evidence-only",
+        guidance:
+          "Preserve the captured content for reconstruction and analysis, but keep it in the non-authoritative evidence channel and review its provenance before reuse.",
+      };
+    case "instruction-boundary-violation":
+    case "untrusted-persistent-instruction":
+      return {
+        ...base,
+        kind: "review-warning",
+        title: "Restore the instruction trust boundary",
+        guidance:
+          "Exclude the untrusted instruction from executable model context while retaining its source evidence for faithful reconstruction and audit.",
+      };
+    case "tool-escalation-request":
+      return {
+        ...base,
+        kind: "review-warning",
+        title: "Keep tool authority with the trusted task",
+        guidance:
+          "Do not let page, repository, or network content authorize a tool action. Re-evaluate the action only from the trusted operator task and normal verification gates.",
       };
     case "deployment-provider-required":
     case "deployment-target-unsupported":
@@ -177,7 +206,7 @@ function resolutionFor(restriction: Restriction): RestrictionResolution {
         kind: "resolve-publish-gate",
         title: "Resolve release gate blockers",
         guidance:
-          "Complete required compile, provenance, alignment, critical-finding, runtime, provider, and domain checks before publishing.",
+          "Complete required compile, provenance, alignment, critical-finding, runtime, provider, domain, and adversarial checks before publishing.",
       };
     case "publish-warning":
       return {
@@ -207,6 +236,8 @@ export function createPolicyEnvelope(
     hosting: [...mutableByScope.hosting],
     deployment: [...mutableByScope.deployment],
     publish: [...mutableByScope.publish],
+    "ai-context": [...mutableByScope["ai-context"]],
+    "agent-tool": [...mutableByScope["agent-tool"]],
   };
 
   const seen = new Set<string>();

@@ -1,3 +1,6 @@
+import type { ToolCapability } from "@/mirrorcraft/capability-firewall/types";
+import type { TrustTier } from "@/mirrorcraft/prompt-defense";
+
 export type AgentPhase =
   | "plan"
   | "inspect"
@@ -15,11 +18,22 @@ export type ToolClass =
   | "network"
   | "git";
 
+export interface AgentInstructionProvenance {
+  origin: string;
+  hash?: string;
+  evidenceIds?: string[];
+}
+
 export interface AgentInstruction {
   id: string;
   description: string;
   scope?: string[];
   priority: number;
+  /** Defaults to operator semantics for legacy callers that omit provenance. */
+  source?: TrustTier;
+  /** Explicitly false for evidence-only instructions; legacy callers may omit this field. */
+  executableInstruction?: boolean;
+  provenance?: AgentInstructionProvenance;
 }
 
 export interface AgentTool {
@@ -28,6 +42,8 @@ export interface AgentTool {
   description: string;
   mutatesWorkspace: boolean;
   requiresVerification: boolean;
+  /** Optional additive metadata for provenance-aware authorization. */
+  capabilities?: ToolCapability[];
 }
 
 export interface AgentModelProfile {

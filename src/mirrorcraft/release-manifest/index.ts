@@ -1,3 +1,4 @@
+import type { BaselineStatus } from "@/mirrorcraft/adversarial-eval";
 import type { VerificationResult } from "@/mirrorcraft/verification-engine";
 
 export type ReleaseStage = "draft" | "analyzed" | "aligned" | "built" | "verified" | "ready" | "published";
@@ -17,6 +18,11 @@ export interface ReleaseArtifact {
   sha256?: string;
 }
 
+export interface ReleaseAdversarialVerification {
+  status: BaselineStatus;
+  evidenceIds: string[];
+}
+
 export interface ReleaseManifest {
   projectId: string;
   revision: string;
@@ -32,6 +38,8 @@ export interface ReleaseManifest {
   warnings: string[];
   artifacts: ReleaseArtifact[];
   rollbackCheckpointId?: string;
+  aiGeneratedOrRepaired?: boolean;
+  adversarialVerification?: ReleaseAdversarialVerification;
 }
 
 export function advanceReleaseStage(manifest: ReleaseManifest, next: ReleaseStage): ReleaseManifest {
@@ -44,9 +52,13 @@ export function advanceReleaseStage(manifest: ReleaseManifest, next: ReleaseStag
 }
 
 export function releaseReady(manifest: ReleaseManifest): boolean {
+  const adversarialReady = !manifest.aiGeneratedOrRepaired ||
+    manifest.adversarialVerification?.status === "measured-pass";
+
   return manifest.stage === "ready" &&
     manifest.alignmentPassed &&
     manifest.provenanceComplete &&
     manifest.unresolvedCriticalFindings === 0 &&
+    adversarialReady &&
     manifest.verification.filter((result) => result.required).every((result) => result.status === "passed");
 }

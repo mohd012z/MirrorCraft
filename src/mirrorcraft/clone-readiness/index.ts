@@ -1,3 +1,4 @@
+import type { BaselineStatus } from "@/mirrorcraft/adversarial-eval";
 import type { DeploymentRecommendation } from "@/mirrorcraft/deployment-classifier";
 
 export interface FidelitySummary {
@@ -7,6 +8,11 @@ export interface FidelitySummary {
   behavior: number;
   assets: number;
   overall: number;
+}
+
+export interface AdversarialVerificationState {
+  status: BaselineStatus;
+  evidenceIds: string[];
 }
 
 export interface CloneReadinessInput {
@@ -25,11 +31,14 @@ export interface CloneReadinessInput {
   warnings: string[];
   fidelity: FidelitySummary;
   deployment: DeploymentRecommendation;
+  aiGeneratedOrRepaired?: boolean;
+  adversarialVerification?: AdversarialVerificationState;
 }
 
 export interface CloneReadinessReport extends CloneReadinessInput {
   reconstructionComplete: boolean;
   verificationPassed: boolean;
+  adversarialVerificationStatus: BaselineStatus;
   publishReady: boolean;
   blockers: string[];
 }
@@ -51,6 +60,21 @@ export function buildCloneReadinessReport(
     blockers.push(`${input.unresolvedCriticalFindings} critical finding(s) remain unresolved.`);
   }
 
+  const adversarialVerificationStatus =
+    input.adversarialVerification?.status ?? "unmeasured";
+  if (input.aiGeneratedOrRepaired) {
+    if (adversarialVerificationStatus === "unmeasured") {
+      blockers.push("AI-generated or AI-repaired clone adversarial verification is unmeasured.");
+    } else if (adversarialVerificationStatus === "measured-fail") {
+      const evidence = input.adversarialVerification?.evidenceIds ?? [];
+      blockers.push(
+        `AI-generated or AI-repaired clone failed adversarial verification${
+          evidence.length > 0 ? ` (${evidence.join(", ")})` : ""
+        }.`,
+      );
+    }
+  }
+
   const reconstructionComplete = input.pagesReconstructed >= input.pagesPermitted;
   const verificationPassed =
     input.brokenRoutes === 0 &&
@@ -62,6 +86,7 @@ export function buildCloneReadinessReport(
     ...input,
     reconstructionComplete,
     verificationPassed,
+    adversarialVerificationStatus,
     publishReady: reconstructionComplete && verificationPassed && blockers.length === 0,
     blockers,
   };

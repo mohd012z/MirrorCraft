@@ -12,6 +12,8 @@ export const STUDIO_EVENTS = {
   io: "mirrorcraft:studio-io", // detail: "import" | "export" | "load"
   selectSection: "mirrorcraft:studio-select-section", // detail: { id }
   selectSlot: "mirrorcraft:studio-select-slot", // detail: { instanceId, slot, label }
+  targetContext: "mirrorcraft:studio-target-context", // detail: TargetContext | null
+  targetImpact: "mirrorcraft:studio-target-impact", // detail: ImpactReport | null
   viewport: "mirrorcraft:studio-viewport", // detail: "auto" | "portrait" | "landscape" | "desktop" | "wide"
   expandDesign: "mirrorcraft:studio-expand-design",
   publish: "mirrorcraft:studio-publish", // detail: { compiled: boolean }

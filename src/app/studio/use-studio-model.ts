@@ -29,6 +29,7 @@ import {
 import { STUDIO_EVENTS, dispatchStudioEvent, onStudioEvent } from "@/app/studio/studio-bus";
 import type { StudioRecoveryRecord } from "@/mirrorcraft/studio-recovery";
 import type { SeededState } from "@/mirrorcraft/clone-seeds";
+import { buildImpactReport, buildTargetContext, resolveTarget } from "@/mirrorcraft/target-studio";
 
 export interface StudioModel {
   history: StudioHistory;
@@ -93,6 +94,14 @@ export function useStudioModel(initial?: StudioModelInitial): StudioModel {
     onHistoryChange: setHistory,
   });
 
+  const composition = history.present.composition;
+  const content = history.present.content;
+
+  const graph = useMemo(
+    () => toSectionContentWebGraph(composition, content),
+    [composition, content],
+  );
+
   // Undo/redo + I/O requests from the shell (header, bottom bar, template).
   useEffect(() => {
     const offUndo = onStudioEvent(STUDIO_EVENTS.undo, (action) => {
@@ -125,7 +134,6 @@ export function useStudioModel(initial?: StudioModelInitial): StudioModel {
         return true;
       }
       if (!clickIOMode()) {
-        // Compact IDE: the I/O panel lives in the Project drawer — open it, retry.
         dispatchStudioEvent(STUDIO_EVENTS.drawer, "project");
         window.setTimeout(clickIOMode, 150);
       }
@@ -136,13 +144,36 @@ export function useStudioModel(initial?: StudioModelInitial): StudioModel {
     };
   }, []);
 
-  const composition = history.present.composition;
-  const content = history.present.content;
+  // Convert Studio selections into canonical target context and impact events.
+  // Exact graph IDs are preferred; labels are only a deterministic fallback.
+  useEffect(() => {
+    function publishTarget(query: { id?: string; label?: string }) {
+      const resolution = resolveTarget(graph, query);
+      const targetId = resolution.selected?.target.id;
+      const context = targetId ? buildTargetContext(graph, targetId) : null;
+      const impact = targetId ? buildImpactReport(graph, targetId) : null;
+      dispatchStudioEvent(STUDIO_EVENTS.targetContext, context);
+      dispatchStudioEvent(STUDIO_EVENTS.targetImpact, impact);
+    }
 
-  const graph = useMemo(
-    () => toSectionContentWebGraph(composition, content),
-    [composition, content],
-  );
+    const offSection = onStudioEvent(STUDIO_EVENTS.selectSection, (detail) => {
+      if (typeof detail !== "object" || detail === null || !("id" in detail)) return;
+      const id = (detail as { id?: unknown }).id;
+      if (typeof id === "string") publishTarget({ id, label: id });
+    });
+    const offSlot = onStudioEvent(STUDIO_EVENTS.selectSlot, (detail) => {
+      if (typeof detail !== "object" || detail === null) return;
+      const value = detail as { instanceId?: unknown; slot?: unknown; label?: unknown };
+      const instanceId = typeof value.instanceId === "string" ? value.instanceId : undefined;
+      const slot = typeof value.slot === "string" ? value.slot : undefined;
+      const label = typeof value.label === "string" ? value.label : slot;
+      publishTarget({ id: instanceId && slot ? `${instanceId}:${slot}` : instanceId, label });
+    });
+    return () => {
+      offSection();
+      offSlot();
+    };
+  }, [graph]);
 
   const changeComposition = useCallback(
     (next: PageComposition, label = "Update page structure") => {

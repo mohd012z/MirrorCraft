@@ -51,7 +51,10 @@ export default function StudioPage() {
 
 function StudioLoading() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#0a0e1a] text-xs text-white/40">
+    <main
+      data-mirrorcraft-loading="true"
+      className="flex min-h-screen items-center justify-center bg-[#0a0e1a] text-xs text-white/40"
+    >
       Loading studio…
     </main>
   );
@@ -62,28 +65,54 @@ function StudioPageInner() {
   const initial = studioInitialForSearch(search);
   const [view, setView] = useState<"classic" | "template">("template");
 
-  // Android runtime evidence. Do not report ready merely because JavaScript ran:
-  // require the hydrated Studio root and its Tailwind background to be applied.
-  // This directly guards the failure mode where the APK showed an unstyled
-  // "Loading studio…" shell because JS/CSS subresources were unavailable.
+  // Android runtime evidence. React may prepare a suspended tree before the
+  // fallback has disappeared from the visible page, so a single effect/frame
+  // is too early. Report ready only after the loading fallback is gone, the
+  // hydrated Studio root is visible, and its compiled Tailwind CSS is applied.
   useEffect(() => {
-    const frame = window.requestAnimationFrame(() => {
+    let cancelled = false;
+    let frame = 0;
+
+    const checkReady = () => {
+      if (cancelled) return;
+
+      const loading = document.querySelector<HTMLElement>(
+        '[data-mirrorcraft-loading="true"]',
+      );
       const root = document.querySelector<HTMLElement>(
         '[data-mirrorcraft-studio-ready="true"]',
       );
-      if (!root) return;
 
-      const background = window.getComputedStyle(root).backgroundColor.replace(/\s/g, "");
-      const cssReady =
-        background === "rgb(10,14,26)" || background === "rgba(10,14,26,1)";
-      if (!cssReady) return;
+      if (!loading && root?.isConnected) {
+        const style = window.getComputedStyle(root);
+        const background = style.backgroundColor.replace(/\s/g, "");
+        const rect = root.getBoundingClientRect();
+        const cssReady =
+          background === "rgb(10,14,26)" || background === "rgba(10,14,26,1)";
+        const visible =
+          style.display !== "none" &&
+          style.visibility !== "hidden" &&
+          style.opacity !== "0" &&
+          rect.width > 0 &&
+          rect.height > 0;
 
-      const runtimeWindow = window as typeof window & {
-        AndroidBridge?: { reportStudioReady?: () => void };
-      };
-      runtimeWindow.AndroidBridge?.reportStudioReady?.();
-    });
-    return () => window.cancelAnimationFrame(frame);
+        if (cssReady && visible) {
+          const runtimeWindow = window as typeof window & {
+            AndroidBridge?: { reportStudioReady?: () => void };
+          };
+          runtimeWindow.AndroidBridge?.reportStudioReady?.();
+          return;
+        }
+      }
+
+      frame = window.requestAnimationFrame(checkReady);
+    };
+
+    frame = window.requestAnimationFrame(checkReady);
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(frame);
+    };
   }, []);
 
   // The bottom bar "List view" tab (and the template's "‹ Classic" button) switch views.

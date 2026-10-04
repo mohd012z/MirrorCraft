@@ -73,7 +73,7 @@ jobs:
         with:
           gradle-version: "8.10.2"
 
-      - name: Install Android SDK and emulator image
+      - name: Install Android SDK 35
         run: |
           set -euo pipefail
           SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
@@ -86,12 +86,7 @@ jobs:
             exit 1
           fi
           yes | "$SDKMANAGER" --licenses >/dev/null || true
-          "$SDKMANAGER" \
-            "platform-tools" \
-            "emulator" \
-            "platforms;android-35" \
-            "build-tools;35.0.0" \
-            "system-images;android-35;google_apis;x86_64"
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Build debug APK
         run: gradle -p android --no-daemon :app:assembleDebug
@@ -109,84 +104,23 @@ jobs:
           ls -lh MirrorCraft-debug.apk
           sha256sum MirrorCraft-debug.apk > MirrorCraft-debug.apk.sha256
 
-      - name: Runtime smoke test on Android emulator
+      - name: Enable KVM for Android emulator
         run: |
-          set -euo pipefail
-          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
-          ADB="$SDK_ROOT/platform-tools/adb"
-          EMULATOR="$SDK_ROOT/emulator/emulator"
-          AVDMANAGER="$SDK_ROOT/cmdline-tools/latest/bin/avdmanager"
-          if [ ! -x "$AVDMANAGER" ]; then
-            AVDMANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name avdmanager -perm -u+x 2>/dev/null | sort -V | tail -1)"
-          fi
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          test -e /dev/kvm
+          ls -l /dev/kvm
 
-          echo no | "$AVDMANAGER" create avd \
-            --force \
-            --name mirrorcraft-ci \
-            --package "system-images;android-35;google_apis;x86_64"
-
-          sudo chmod 666 /dev/kvm 2>/dev/null || true
-          "$EMULATOR" \
-            -avd mirrorcraft-ci \
-            -no-window \
-            -no-audio \
-            -no-boot-anim \
-            -no-snapshot \
-            -gpu swiftshader_indirect \
-            > MirrorCraft-emulator.log 2>&1 &
-
-          cleanup() {
-            "$ADB" emu kill >/dev/null 2>&1 || true
-          }
-          trap cleanup EXIT
-
-          "$ADB" wait-for-device
-          booted=0
-          for attempt in $(seq 1 120); do
-            if [ "$("$ADB" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; then
-              booted=1
-              break
-            fi
-            sleep 2
-          done
-          if [ "$booted" -ne 1 ]; then
-            echo "Android emulator did not finish booting" >&2
-            exit 1
-          fi
-
-          "$ADB" shell settings put global window_animation_scale 0 || true
-          "$ADB" shell settings put global transition_animation_scale 0 || true
-          "$ADB" shell settings put global animator_duration_scale 0 || true
-          "$ADB" install -r MirrorCraft-debug.apk
-          "$ADB" logcat -c
-          "$ADB" shell am force-stop com.msa.mirrorcraft
-          "$ADB" shell am start -W -n com.msa.mirrorcraft/.MainActivity
-
-          ready=0
-          for attempt in $(seq 1 30); do
-            if "$ADB" logcat -d -s MirrorCraftRuntime:I '*:S' | grep -Fq 'STUDIO_READY'; then
-              ready=1
-              break
-            fi
-            sleep 2
-          done
-
-          "$ADB" exec-out screencap -p > MirrorCraft-runtime.png || true
-          "$ADB" shell uiautomator dump /sdcard/mirrorcraft-window.xml >/dev/null 2>&1 || true
-          "$ADB" pull /sdcard/mirrorcraft-window.xml MirrorCraft-window.xml >/dev/null 2>&1 || true
-          "$ADB" logcat -d > MirrorCraft-runtime.log || true
-
-          if [ -f MirrorCraft-window.xml ] && grep -Fq 'Loading studio' MirrorCraft-window.xml; then
-            echo "Studio is still stuck on the loading fallback" >&2
-            exit 1
-          fi
-          if [ "$ready" -ne 1 ]; then
-            echo "React/CSS Studio readiness handshake was not observed" >&2
-            tail -200 MirrorCraft-runtime.log || true
-            exit 1
-          fi
-
-          echo "Android runtime smoke: STUDIO_READY"
+      - name: Runtime smoke test on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: bash scripts/smoke-android-runtime.sh
 
       - name: Upload runtime diagnostics
         if: always()
@@ -197,7 +131,6 @@ jobs:
             MirrorCraft-runtime.png
             MirrorCraft-runtime.log
             MirrorCraft-window.xml
-            MirrorCraft-emulator.log
           if-no-files-found: warn
           retention-days: 14
 

@@ -53,6 +53,14 @@ export function StudioWorkspace({
       const footer = root.querySelector<HTMLElement>(":scope > footer");
       footer?.setAttribute("data-studio-bottom-bar", "true");
 
+      const header = root.querySelector<HTMLElement>(":scope > header");
+      if (header) {
+        const publish = [...header.querySelectorAll<HTMLButtonElement>("button")].find(
+          (button) => button.textContent?.trim() === "Publish",
+        );
+        publish?.setAttribute("data-studio-top-publish", "true");
+      }
+
       const drawer = root.querySelector<HTMLElement>(".absolute.inset-0.top-14");
       if (drawer && !drawer.dataset.studioDrawer) {
         const title = drawer.querySelector("span")?.textContent?.toLowerCase() ?? "";
@@ -182,6 +190,7 @@ export function StudioWorkspace({
             .studio-mobile-hardened > div > header > div { gap: .25rem; }
             .studio-mobile-hardened > div > header button,
             .studio-mobile-hardened > div > header a { min-height: 2.25rem; }
+            .studio-mobile-hardened > div > header [data-studio-top-publish="true"] { display: none !important; }
             .studio-mobile-hardened > div > footer > span { display: none; }
             .studio-mobile-hardened #mc-canvas > div:first-child { min-height: 250px; height: 34vh; }
           }

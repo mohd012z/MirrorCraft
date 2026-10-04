@@ -40,6 +40,8 @@ expectNotContains(main, 'APP_HOST = "app.local"', "legacy synthetic host");
 expectContains(main, "reportStudioReady()", "native hydration bridge");
 expectContains(main, 'Log.i("MirrorCraftRuntime", "STUDIO_READY")', "native ready evidence");
 expectContains(studioPage, "reportStudioReady", "React hydration handshake");
+expectContains(studioPage, 'data-mirrorcraft-studio-ready="true"', "hydrated Studio DOM marker");
+expectContains(studioPage, "getComputedStyle", "CSS readiness verification");
 
 expectContains(gradle, 'implementation "androidx.webkit:webkit:', "AndroidX WebKit dependency");
 expectContains(gradleProperties, "android.useAndroidX=true", "AndroidX project flag");

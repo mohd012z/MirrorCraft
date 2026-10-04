@@ -62,14 +62,28 @@ function StudioPageInner() {
   const initial = studioInitialForSearch(search);
   const [view, setView] = useState<"classic" | "template">("template");
 
-  // Native Android runtime evidence: this only runs after the client bundle has
-  // executed and React has hydrated/committed StudioPageInner. Browser builds
-  // simply skip the optional bridge.
+  // Android runtime evidence. Do not report ready merely because JavaScript ran:
+  // require the hydrated Studio root and its Tailwind background to be applied.
+  // This directly guards the failure mode where the APK showed an unstyled
+  // "Loading studio…" shell because JS/CSS subresources were unavailable.
   useEffect(() => {
-    const runtimeWindow = window as typeof window & {
-      AndroidBridge?: { reportStudioReady?: () => void };
-    };
-    runtimeWindow.AndroidBridge?.reportStudioReady?.();
+    const frame = window.requestAnimationFrame(() => {
+      const root = document.querySelector<HTMLElement>(
+        '[data-mirrorcraft-studio-ready="true"]',
+      );
+      if (!root) return;
+
+      const background = window.getComputedStyle(root).backgroundColor.replace(/\s/g, "");
+      const cssReady =
+        background === "rgb(10,14,26)" || background === "rgba(10,14,26,1)";
+      if (!cssReady) return;
+
+      const runtimeWindow = window as typeof window & {
+        AndroidBridge?: { reportStudioReady?: () => void };
+      };
+      runtimeWindow.AndroidBridge?.reportStudioReady?.();
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, []);
 
   // The bottom bar "List view" tab (and the template's "‹ Classic" button) switch views.
@@ -82,7 +96,10 @@ function StudioPageInner() {
   // Added template view — full IDE (top bar · navigator · canvas · inspector · status bar).
   if (view === "template") {
     return (
-      <main className="h-[100svh] overflow-hidden bg-[#0a0e1a] text-white">
+      <main
+        data-mirrorcraft-studio-ready="true"
+        className="h-[100svh] overflow-hidden bg-[#0a0e1a] text-white"
+      >
         <StudioWorkspace view="template" initial={initial ?? undefined} />
       </main>
     );
@@ -90,7 +107,10 @@ function StudioPageInner() {
 
   // Classic view (default) — category sections + auto-hiding bottom tab bar.
   return (
-    <main className="min-h-screen bg-[#0a0e1a] px-3 pb-28 pt-4 text-white sm:px-6 lg:px-8">
+    <main
+      data-mirrorcraft-studio-ready="true"
+      className="min-h-screen bg-[#0a0e1a] px-3 pb-28 pt-4 text-white sm:px-6 lg:px-8"
+    >
       <div className="mx-auto max-w-[1400px]">
         {/* Slim header — categories live in the bottom tab bar */}
         <header className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-teal-300/15 bg-[#101827] px-4 py-3">

@@ -35,7 +35,13 @@ jobs:
         env:
           MIRRORCRAFT_STATIC_EXPORT: "1"
           MIRRORCRAFT_PAGES_BASE_PATH: ""
-        run: npm run build
+        run: |
+          set -e
+          for attempt in 1 2 3; do
+            npm run build && break
+            [ "$attempt" = "3" ] && exit 1
+            rm -rf .next out
+          done
 
       - name: Stage static assets into Android app
         run: |

@@ -11,6 +11,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Base64;
+import android.util.Log;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -165,6 +166,11 @@ public class MainActivity extends Activity {
     }
 
     private final class AndroidBridge {
+        @JavascriptInterface
+        public void reportStudioReady() {
+            Log.i("MirrorCraftRuntime", "STUDIO_READY");
+        }
+
         @JavascriptInterface
         public void saveBase64File(String filename, String base64, String mime) {
             byte[] bytes;

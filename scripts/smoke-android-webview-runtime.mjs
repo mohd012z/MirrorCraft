@@ -28,6 +28,7 @@ const studioPage = read("src/app/studio/page.tsx");
 const gradle = read("android/app/build.gradle");
 const gradleProperties = readRequired("android/gradle.properties", "AndroidX project configuration");
 const workflow = read(".github/workflows/android-apk.yml");
+const runtimeSmoke = read("scripts/smoke-android-runtime.sh");
 
 expectContains(main, "androidx.webkit.WebViewAssetLoader", "MainActivity import");
 expectContains(main, "WebViewAssetLoader.DEFAULT_DOMAIN", "official asset host");
@@ -41,7 +42,14 @@ expectContains(main, "reportStudioReady()", "native hydration bridge");
 expectContains(main, 'Log.i("MirrorCraftRuntime", "STUDIO_READY")', "native ready evidence");
 expectContains(studioPage, "reportStudioReady", "React hydration handshake");
 expectContains(studioPage, 'data-mirrorcraft-studio-ready="true"', "hydrated Studio DOM marker");
+expectContains(studioPage, 'data-mirrorcraft-loading="true"', "loading fallback marker");
 expectContains(studioPage, "getComputedStyle", "CSS readiness verification");
+expectContains(studioPage, "getBoundingClientRect", "visible-root readiness verification");
+expectContains(studioPage, "data-mirrorcraft-loading", "loading-fallback readiness rejection");
+
+expectContains(runtimeSmoke, "uiautomator dump", "device UI readiness evidence");
+expectContains(runtimeSmoke, "Project home", "real Studio control readiness gate");
+expectContains(runtimeSmoke, "Loading studio", "loading fallback rejection");
 
 expectContains(gradle, 'implementation "androidx.webkit:webkit:', "AndroidX WebKit dependency");
 expectContains(gradleProperties, "android.useAndroidX=true", "AndroidX project flag");

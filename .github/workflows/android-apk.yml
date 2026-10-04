@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - feat/mobile-ui-apk
+      - fix/android-webview-runtime
 
 permissions:
   contents: read
@@ -30,6 +31,9 @@ jobs:
 
       - name: Install web dependencies
         run: npm ci
+
+      - name: Verify Android WebView runtime contract
+        run: node scripts/smoke-android-webview-runtime.mjs
 
       - name: Build offline static Studio
         env:

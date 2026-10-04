@@ -70,11 +70,6 @@ export function StudioMobileControls({ model }: { model: StudioModel }) {
     });
   }, [model.content]);
 
-  useEffect(() => {
-    if (!slot) return;
-    setDraft(getSectionSlotValue(model.content, slot.instanceId, slot.slot) ?? "");
-  }, [model.content, slot]);
-
   const visibleSections = useMemo(
     () => model.composition.sections.filter((section) => !section.hidden),
     [model.composition.sections],

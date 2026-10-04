@@ -95,3 +95,6 @@ jobs:
 
       - name: Studio Playwright smoke
         run: npm run smoke:studio
+
+      - name: Studio mobile UI smoke
+        run: npm run smoke:mobile-ui

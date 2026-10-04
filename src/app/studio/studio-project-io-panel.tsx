@@ -8,6 +8,7 @@ import {
   type SetStateAction,
 } from "react";
 
+import { saveTextWithAndroidBridge } from "@/app/studio/android-bridge";
 import {
   createStudioHistoryFromProjectBundle,
   createStudioProjectBundle,
@@ -50,11 +51,18 @@ export function StudioProjectIOPanel({
     try {
       const bundle = createStudioProjectBundle(projectId, history);
       const raw = serializeStudioProjectBundle(bundle);
+      const filename = `${safeFilename(history.present.composition.pageId)}.mirrorcraft.json`;
+
+      if (saveTextWithAndroidBridge(filename, raw, "application/json")) {
+        setStatus(`Exported project ${history.present.composition.pageId} to Downloads`);
+        return;
+      }
+
       const blob = new Blob([raw], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = `${safeFilename(history.present.composition.pageId)}.mirrorcraft.json`;
+      anchor.download = filename;
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();

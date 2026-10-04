@@ -1,0 +1,106 @@
+name: Build MirrorCraft APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feat/mobile-ui-apk
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mirrorcraft-android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install web dependencies
+        run: npm ci
+
+      - name: Build offline static Studio
+        env:
+          MIRRORCRAFT_STATIC_EXPORT: "1"
+          MIRRORCRAFT_PAGES_BASE_PATH: ""
+        run: |
+          set -e
+          for attempt in 1 2 3; do
+            npm run build && break
+            [ "$attempt" = "3" ] && exit 1
+            rm -rf .next out
+          done
+
+      - name: Stage static assets into Android app
+        run: |
+          rm -rf android/app/src/main/assets
+          mkdir -p android/app/src/main/assets
+          cp -R out/. android/app/src/main/assets/
+          test -f android/app/src/main/assets/studio/index.html
+          test -d android/app/src/main/assets/_next
+          find android/app/src/main/assets/_next -type f | head -20
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.10.2"
+
+      - name: Install Android SDK 35
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then
+            SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager -perm -u+x 2>/dev/null | sort -V | tail -1)"
+          fi
+          if [ -z "${SDKMANAGER:-}" ] || [ ! -x "$SDKMANAGER" ]; then
+            echo "sdkmanager not found under $SDK_ROOT" >&2
+            exit 1
+          fi
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Build debug APK
+        run: gradle -p android --no-daemon :app:assembleDebug
+
+      - name: Verify APK
+        run: |
+          set -euo pipefail
+          test -f android/app/build/outputs/apk/debug/app-debug.apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk MirrorCraft-debug.apk
+          unzip -Z1 MirrorCraft-debug.apk > MirrorCraft-debug.apk.files.txt
+          grep -Fxq 'assets/studio/index.html' MirrorCraft-debug.apk.files.txt
+          grep -Eq '^assets/_next/static/chunks/.*\.js$' MirrorCraft-debug.apk.files.txt
+          grep -Eq '^assets/_next/static/chunks/.*\.css$' MirrorCraft-debug.apk.files.txt
+          test "$(grep -Ec '^assets/_next/.*' MirrorCraft-debug.apk.files.txt)" -ge 5
+          ls -lh MirrorCraft-debug.apk
+          sha256sum MirrorCraft-debug.apk > MirrorCraft-debug.apk.sha256
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MirrorCraft-Android-debug
+          path: |
+            MirrorCraft-debug.apk
+            MirrorCraft-debug.apk.sha256
+            MirrorCraft-debug.apk.files.txt
+          if-no-files-found: error
+          retention-days: 14

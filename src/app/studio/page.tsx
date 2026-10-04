@@ -62,6 +62,16 @@ function StudioPageInner() {
   const initial = studioInitialForSearch(search);
   const [view, setView] = useState<"classic" | "template">("template");
 
+  // Native Android runtime evidence: this only runs after the client bundle has
+  // executed and React has hydrated/committed StudioPageInner. Browser builds
+  // simply skip the optional bridge.
+  useEffect(() => {
+    const runtimeWindow = window as typeof window & {
+      AndroidBridge?: { reportStudioReady?: () => void };
+    };
+    runtimeWindow.AndroidBridge?.reportStudioReady?.();
+  }, []);
+
   // The bottom bar "List view" tab (and the template's "‹ Classic" button) switch views.
   useEffect(() => {
     return onStudioEvent(STUDIO_EVENTS.view, (detail) => {

@@ -116,13 +116,13 @@ try {
   await mobile.close();
 
   // Desktop: selected branch must reach the canonical Compile/Publish gate and
-  // there must be no separate fake top-bar Compile button.
+  // the legacy flag-only top-bar Compile must not be user-visible.
   const desktop = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   await desktop.goto(`${BASE_URL}/studio`, { waitUntil: "networkidle" });
 
   assert.equal(
-    await desktop.getByRole("button", { name: "Compile", exact: true }).count(),
-    0,
+    await desktop.getByRole("button", { name: "Compile", exact: true, includeHidden: true }).isVisible(),
+    false,
     "compact IDE top bar must not expose a second fake Compile action",
   );
 

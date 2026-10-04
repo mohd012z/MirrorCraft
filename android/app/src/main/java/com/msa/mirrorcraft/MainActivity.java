@@ -12,7 +12,6 @@ import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Base64;
 import android.webkit.JavascriptInterface;
-import android.webkit.MimeTypeMap;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
@@ -22,16 +21,15 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
 
+import androidx.webkit.WebViewAssetLoader;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.Locale;
 
 public class MainActivity extends Activity {
-    private static final String APP_HOST = "app.local";
-    private static final String START_URL = "https://" + APP_HOST + "/studio/";
+    private static final String START_URL = "https://" + WebViewAssetLoader.DEFAULT_DOMAIN + "/assets/studio/index.html";
     private static final int FILE_CHOOSER_REQUEST = 4401;
 
     private WebView webView;
@@ -62,8 +60,12 @@ public class MainActivity extends Activity {
         settings.setMediaPlaybackRequiresUserGesture(true);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
 
+        WebViewAssetLoader assetLoader = new WebViewAssetLoader.Builder()
+                .addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this))
+                .build();
+
         webView.addJavascriptInterface(new AndroidBridge(), "AndroidBridge");
-        webView.setWebViewClient(new LocalAssetClient());
+        webView.setWebViewClient(new LocalAssetClient(assetLoader));
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public boolean onShowFileChooser(
@@ -131,39 +133,25 @@ public class MainActivity extends Activity {
     }
 
     private final class LocalAssetClient extends WebViewClient {
+        private final WebViewAssetLoader assetLoader;
+
+        private LocalAssetClient(WebViewAssetLoader assetLoader) {
+            this.assetLoader = assetLoader;
+        }
+
         @Override
         public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-            Uri uri = request.getUrl();
-            if (!"https".equalsIgnoreCase(uri.getScheme()) || !APP_HOST.equalsIgnoreCase(uri.getHost())) {
-                return super.shouldInterceptRequest(view, request);
+            WebResourceResponse response = assetLoader.shouldInterceptRequest(request.getUrl());
+            if (response != null) {
+                return response;
             }
-
-            String assetPath = uri.getPath();
-            if (assetPath == null || assetPath.isEmpty() || "/".equals(assetPath)) {
-                assetPath = "/index.html";
-            }
-            if (assetPath.endsWith("/")) {
-                assetPath = assetPath + "index.html";
-            }
-            while (assetPath.startsWith("/")) {
-                assetPath = assetPath.substring(1);
-            }
-            if (assetPath.contains("..")) {
-                return empty404();
-            }
-
-            try {
-                InputStream stream = getAssets().open(assetPath);
-                return new WebResourceResponse(mimeFor(assetPath), encodingFor(assetPath), stream);
-            } catch (IOException missing) {
-                return empty404();
-            }
+            return super.shouldInterceptRequest(view, request);
         }
 
         @Override
         public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
             Uri uri = request.getUrl();
-            if (APP_HOST.equalsIgnoreCase(uri.getHost())) {
+            if (WebViewAssetLoader.DEFAULT_DOMAIN.equalsIgnoreCase(uri.getHost())) {
                 return false;
             }
             Intent browser = new Intent(Intent.ACTION_VIEW, uri);
@@ -174,44 +162,6 @@ public class MainActivity extends Activity {
             }
             return true;
         }
-
-        private WebResourceResponse empty404() {
-            return new WebResourceResponse(
-                    "text/plain",
-                    "UTF-8",
-                    404,
-                    "Not Found",
-                    java.util.Collections.emptyMap(),
-                    new java.io.ByteArrayInputStream(new byte[0])
-            );
-        }
-    }
-
-    private String mimeFor(String path) {
-        String lower = path.toLowerCase(Locale.ROOT);
-        if (lower.endsWith(".html")) return "text/html";
-        if (lower.endsWith(".js") || lower.endsWith(".mjs")) return "application/javascript";
-        if (lower.endsWith(".css")) return "text/css";
-        if (lower.endsWith(".json")) return "application/json";
-        if (lower.endsWith(".svg")) return "image/svg+xml";
-        if (lower.endsWith(".woff2")) return "font/woff2";
-        if (lower.endsWith(".woff")) return "font/woff";
-        if (lower.endsWith(".txt")) return "text/plain";
-        String extension = MimeTypeMap.getFileExtensionFromUrl(path);
-        String guessed = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension);
-        return guessed != null ? guessed : "application/octet-stream";
-    }
-
-    private String encodingFor(String path) {
-        String lower = path.toLowerCase(Locale.ROOT);
-        if (
-                lower.endsWith(".html") || lower.endsWith(".js") || lower.endsWith(".mjs") ||
-                lower.endsWith(".css") || lower.endsWith(".json") || lower.endsWith(".svg") ||
-                lower.endsWith(".txt")
-        ) {
-            return "UTF-8";
-        }
-        return null;
     }
 
     private final class AndroidBridge {

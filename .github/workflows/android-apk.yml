@@ -44,6 +44,7 @@ jobs:
           cp -R out/. android/app/src/main/assets/
           test -f android/app/src/main/assets/studio/index.html
           test -d android/app/src/main/assets/_next
+          find android/app/src/main/assets/_next -type f | head -20
 
       - name: Setup Java
         uses: actions/setup-java@v5
@@ -76,8 +77,14 @@ jobs:
 
       - name: Verify APK
         run: |
+          set -euo pipefail
           test -f android/app/build/outputs/apk/debug/app-debug.apk
           cp android/app/build/outputs/apk/debug/app-debug.apk MirrorCraft-debug.apk
+          unzip -Z1 MirrorCraft-debug.apk > MirrorCraft-debug.apk.files.txt
+          grep -Fxq 'assets/studio/index.html' MirrorCraft-debug.apk.files.txt
+          grep -Eq '^assets/_next/static/chunks/.*\.js$' MirrorCraft-debug.apk.files.txt
+          grep -Eq '^assets/_next/static/chunks/.*\.css$' MirrorCraft-debug.apk.files.txt
+          test "$(grep -Ec '^assets/_next/.*' MirrorCraft-debug.apk.files.txt)" -ge 5
           ls -lh MirrorCraft-debug.apk
           sha256sum MirrorCraft-debug.apk > MirrorCraft-debug.apk.sha256
 
@@ -88,5 +95,6 @@ jobs:
           path: |
             MirrorCraft-debug.apk
             MirrorCraft-debug.apk.sha256
+            MirrorCraft-debug.apk.files.txt
           if-no-files-found: error
           retention-days: 14
